@@ -1,0 +1,302 @@
+📁 capture/
+
+⚡ Mission du dossier :
+Collecter les paquets réseau depuis l’interface, en temps réel ou depuis des PCAP, grâce à différents outils (Scapy, Pyshark, Socket).
+C’est la source de toutes les données du pipeline.
+
+• scapy_capture.py
+
+Capture en temps réel avec Scapy
+
+Permet de définir des filtres simples (IP, ports…)
+
+Très utile pour générer ou sniffer des paquets bruts
+
+Sert pour observer directement les couches (Ethernet, IP, TCP…)
+
+• pyshark_capture.py
+
+Utilise Pyshark (moteur de Wireshark)
+
+Capture plus "propre" et plus complète
+
+Filtres BPF avancés (proto, flags, champs précis)
+
+Parfait pour les analyses détaillées ou chargement de fichiers PCAP
+
+• live_listener.py
+
+Fichier central qui orchestre toutes les méthodes de capture
+
+Peut lancer : scapy, pyshark, raw sockets…
+
+Fournit un flux continu à la couche preprocessing
+
+• socket_sniffer.py
+
+Sniffer "bas niveau" avec socket(AF_PACKET, SOCK_RAW)
+
+Permet de capturer même quand scapy/pyshark échouent
+
+Très utile pour comprendre les paquets bruts au niveau OS
+
+pourquoi :
+
+-Redondance : Si un outil échoue, les autres prennent le relais
+
+-Adaptabilité : Différents scénarios nécessitent différents outils
+
+-Pédagogie : Comprendre plusieurs approches renforce la maîtrise
+
+-Évolutivité : On peut choisir l'outil selon le volume de trafic
+
+=========================================================
+📁 preprocessing/
+
+⚙️ Mission du dossier :
+Nettoyer, parser, normaliser et réorganiser les paquets recueillis afin qu’ils soient exploitables.
+Transforme les paquets → en dictionnaires → puis en DataFrames Pandas.
+
+• packet_parser.py
+
+Décompose chaque paquet en informations utilisables
+
+Extrait :
+
+IP src, IP dst
+
+ports
+
+protocoles (TCP/UDP/ICMP)
+
+flags TCP
+
+longueur du paquet
+
+TTL, checksum, options…
+
+Convertit un paquet brut en structure Python propre
+
+• dataframe_builder.py
+
+Prend les paquets parsés → crée un Pandas DataFrame
+
+Chaque ligne = un paquet
+
+Colonnes = toutes les features extraites
+
+Prépare les données pour :
+
+détection par règles
+
+visualisation
+
+statistiques
+
+• feature_engineering.py
+
+Ajoute des attributs avancés :
+
+taux de SYN par seconde
+
+anomalies de ports
+
+delta entre timestamps
+
+ratio SYN/ACK
+
+détection de patterns suspects
+
+
+=========================================================
+📁 detection/
+
+🛡️ Mission du dossier :
+Appliquer les règles, signatures ou seuils permettant de repérer les attaques classiques.
+C’est ici que les alertes sont générées.
+
+• syn_flood_detector.py
+
+Détecte :
+
+SYN flood
+
+SYN scan
+
+Port scanning avancé basé sur les flags
+Fonctions clés :
+
+Analyse du taux de SYN
+
+Mesure du ratio SYN/SYN-ACK
+
+Détection de scans séquentiels ou aléatoires
+
+• arp_spoof_detector.py
+
+Détecte :
+
+ARP spoofing
+
+Man-in-the-Middle ARP
+
+MAC/IP mismatch
+Fonctions clés :
+
+Table ARP locale
+
+Vérification des MAC inconsistants
+
+Détection de flood ARP
+
+• xmas_null_scan_detector.py
+
+Détecte les scans furtifs :
+
+XMAS scan (FIN + PSH + URG)
+
+NULL scan (aucun flag)
+
+FIN scan
+Fonctions clés :
+
+Lecture des flags TCP
+
+Détection de patterns interdits
+
+Génération d’alertes furtives
+
+• rule_engine.py
+
+Moteur qui appelle tous les détecteurs
+
+Centralise :
+
+décisions
+
+seuils
+
+alertes
+
+Peut envoyer les alertes vers logs, interface, API…
+
+
+=========================================================
+📁 api/ (optionnel)
+
+🌐 Mission du dossier :
+Fournir une interface web (Flask / Django) pour afficher :
+
+Le trafic capturé
+
+Les alertes d’attaque
+
+Des statistiques / graphiques
+
+Des tableaux de logs
+
+• app.py
+
+Point d’entrée de l’application web
+
+Initialise Flask/Django
+
+Connecte données + routes + templates
+
+• routes/
+
+Contient les endpoints :
+
+/alerts
+
+/packets
+
+/stats
+
+/dashboard
+
+• templates/
+
+Pages HTML/Jinja du dashboard
+
+Graphiques (JS/CSS)
+
+Tableaux des alertes
+
+=========================================================
+📁 utils/
+
+🔧 Mission du dossier :
+Fournir les outils communs utilisés par tous les modules.
+
+• logger.py
+
+Système centralisé de logs
+
+Enregistre :
+
+alertes
+
+erreurs
+
+paquets suspects
+
+stats réseau
+
+• config.py
+
+Contient toutes les valeurs configurables, par ex :
+
+interface réseau
+
+seuils SYN flood
+
+filtres de capture
+
+chemins de fichiers
+
+• helpers.py
+
+Fonctions utilitaires :
+
+horodatage
+
+conversion IP
+
+lecture PCAP
+
+manipulation de flags TCP
+
+formattage des alertes
+
+=========================================================
+📁 docs/
+
+📚 Mission du dossier :
+Documenter le projet comme un vrai travail professionnel.
+
+• architecture.md
+
+Explication complète du système
+
+Pipeline graphique
+
+Description des modules
+
+• schema_global.png
+
+Schéma global du pipeline (diagramme)
+
+Utile pour rapport Word / PDF / soutenance
+
+• attacks_reference.md
+
+Explications détaillées des attaques détectées :
+
+SYN flood
+
+ARP spoof
+
+XMAS, NULL, FIN
+
+Schémas + exemples de paquets + explications techniques
