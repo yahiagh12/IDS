@@ -1,0 +1,339 @@
+📁 capture/ 
+⚡ Mission du dossier :
+Collecter les paquets réseau liés aux protocoles avancés et critiques (IPv6, DNS, ARP, ICMP/ICMPv6), en temps réel ou depuis des fichiers PCAP.
+Ce dossier constitue la source de données de toutes les analyses avancées.
+
+• ipv6_capture.py
+
+Capture des paquets IPv6 en temps réel avec Scapy/Pyshark.
+
+Permet de détecter :
+
+Router Advertisements (RA)
+
+Neighbor Solicitation/Advertisement
+
+Paquets IPv6 anormaux (Hop Limit, extension headers)
+
+Très utile pour analyser les flux modernes et IoT.
+
+• dns_capture.py
+
+Capture des requêtes et réponses DNS.
+
+Permet :
+
+Extraction des domaines
+
+Observation des serveurs DNS contactés
+
+Analyse des types de requêtes (A, AAAA, CNAME, TXT…)
+
+Idéal pour préparer la détection de spoofing et empoisonnement DNS.
+
+• icmp_monitor.py
+
+Sniffer ICMP / ICMPv6 pour :
+
+Echo Request/Reply
+
+Messages d’erreur
+
+Tunneling ICMP (payload suspect)
+
+Outil essentiel pour identifier des comportements furtifs ou anormaux.
+
+• arp_listener.py
+
+Surveillance du trafic ARP.
+
+Permet :
+
+Observation des requêtes/réponses ARP
+
+Détection précoce de comportements de poisoning
+
+pourquoi :
+
+Spécialisation : chaque protocole avancé est capturé par un module dédié
+
+Fiabilité : IPv6, DNS, ICMP ont des besoins de capture différents
+
+Précision : optimisation des filtres selon le protocole
+
+Évolutivité : possibilité d’ajouter DHCPv6, NDP, mDNS plus tard
+
+=========================================================
+
+📁 preprocessing/ 
+⚙️ Mission du dossier :
+Nettoyer, décoder, parser et normaliser les paquets avancés pour les transformer en structures exploitables → dictionnaires → DataFrame Pandas.
+
+• advanced_packet_parser.py
+
+Décompose les paquets avancés :
+
+IPv6 : hop limit, extension headers
+
+DNS : query, response, RCODE, serveur
+
+ARP : MAC/IP source et destination
+
+ICMP/ICMPv6 : type, code, payload
+
+Transforme un paquet brut avancé → en données exploitables.
+
+• dns_dataframe_builder.py
+
+Construit un DataFrame orienté DNS :
+
+domaine demandé
+
+serveur consulté
+
+type de requête
+
+temps de réponse
+
+cohérence des résolutions
+
+Idéal pour les statistiques et signatures DNS.
+
+• ipv6_feature_engineering.py
+
+Ajoute des features comportementales avancées :
+
+fréquence des RA
+
+incohérences de Neighbor Discovery
+
+variations de Hop Limit
+
+analyse des adresses Link-Local vs Global
+
+=========================================================
+
+📁 detection/ 
+🛡️ Mission du dossier :
+Appliquer les signatures et règles avancées pour détecter les attaques sophistiquées basées sur DNS, ARP, ICMP, IPv6.
+
+• dns_spoof_detector.py
+
+Détecte :
+
+DNS spoofing
+
+empoisonnement DNS
+
+réponses provenant de serveurs non autorisés
+
+Fonctions clés :
+
+comparaison IP attendue/vérifiée
+
+surveillance des serveurs DNS référents
+
+détection de réponses incohérentes
+
+• arp_poisoning_advanced.py
+
+Détecte :
+
+ARP stealing
+
+Man-in-the-Middle avancé
+
+changements anormaux de MAC
+
+Fonctions clés :
+
+table ARP interne
+
+détection de conflits IP/MAC
+
+alertes sur flood ARP
+
+• icmp_tunnel_detector.py
+
+Détecte les usages malveillants ICMP :
+
+tunneling ICMP
+
+payload anormal
+
+fréquence excessive d’Echo Requests
+
+Fonctions clés :
+
+contrôle de la taille du payload
+
+analyse temporelle des messages
+
+anomalies de type/code ICMP
+
+• ipv6_ra_attack_detector.py
+
+Détecte :
+
+faux routeurs IPv6 (RA spoofing)
+
+modification dangereuse de la gateway
+
+attaques sur Neighbor Discovery
+
+Fonctions clés :
+
+comparaison RA vs routeurs autorisés
+
+détection anomalie Hop Limit
+
+surveillance ND incohérente
+
+• advanced_rule_engine.py
+
+Moteur central qui orchestre :
+
+détecteurs avancés (DNS, ARP, ICMP, IPv6)
+
+seuils comportementaux
+
+système de priorisation des alertes
+
+Sort les alertes pour logs + API + interface.
+
+=========================================================
+
+📁 api/ 
+🌐 Mission du dossier :
+Expose une API pour afficher :
+
+les alertes avancées
+
+le trafic IPv6/DNS/ARP/ICMP
+
+les statistiques d’anomalies
+
+les graphiques techniques (Hop Limit, DNS anomalies…)
+
+• adv_app.py
+
+Point d’entrée API Flask/Django.
+
+Gère :
+
+initialisation des modules avancés
+
+liaison capture → détection → affichage
+
+endpoints dédiés aux attaques avancées
+
+• routes/
+
+Endpoints spécifiques :
+
+/advanced/alerts
+/advanced/stats
+/advanced/packets
+/advanced/dashboard
+
+• templates/
+
+Contient :
+
+dashboard avancé
+
+graphiques DNS, ARP, ICMP
+
+historique IPv6
+
+tables de logs avancées
+
+=========================================================
+
+📁 utils/
+🔧 Mission du dossier :
+Fournir support, outils, logs et configurations spécifiques aux protocoles avancés.
+
+• advanced_logger.py
+
+Enregistre :
+
+alertes avancées (DNS, ICMP, IPv6…)
+
+incohérences ARP
+
+événements ND suspects
+
+anomalies DNS
+
+• adv_config.py
+
+Paramètres avancés :
+
+serveurs DNS autorisés
+
+seuils ICMP (taux max)
+
+Hop Limit attendu IPv6
+
+filtres de capture DNS/ARP/ICMP
+
+seuils de détection de tunneling
+
+• adv_helpers.py
+
+Utilitaires :
+
+formatage IPv6
+
+extraction de domaines DNS
+
+validation des RA IPv6
+
+conversion type/code ICMP
+
+détection d’adresses suspectes
+
+=========================================================
+
+📁 docs/ 
+📚 Mission du dossier :
+Documenter l’ensemble du pipeline avancé.
+
+• architecture_advanced.md
+
+Contient :
+
+architecture du pipeline avancé
+
+fonctionnement détaillé des modules
+
+diagrammes de capture → preprocessing → detection avancée
+
+• schema_advanced.png
+
+Schéma global du pipeline Personne B :
+
+flux IPv6
+
+flux DNS
+
+flux ARP/ICMP
+
+interactions entre capture, détection, interface
+
+• advanced_attack_reference.md
+
+Documentation sur :
+
+DNS spoofing
+
+ARP poisoning avancé
+
+ICMP tunneling
+
+RA spoofing IPv6
+
+attaques furtives basées sur ND
+
+Schémas + signatures + explications techniques.
