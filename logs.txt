@@ -1,0 +1,278 @@
+Ether / IPv6 / UDP / mDNS Qry b'_airplay._tcp.local.'
+Ether / IPv6 / UDP / mDNS Qry b'_airplay._tcp.local.'
+Ether / IPv6 / UDP / mDNS Qry b'_companion-link._tcp.local.'
+Ether / IPv6 / UDP / mDNS Ans b'eLoj._dosvc._tcp.local.'
+Ether / IPv6 / UDP / mDNS Qry b'eLoj._dosvc._tcp.local.'
+Ether / IPv6 / UDP / mDNS Qry b'eLoj._dosvc._tcp.local.'
+Ether / IPv6 / UDP / mDNS Ans b'eLoj._dosvc._tcp.local.'
+Ether / IP / UDP / DNS Qry b'mobile.events.data.microsoft.com.'
+Ether / IP / UDP / DNS Ans b'mobile.events.data.trafficmanager.net.'
+Ether / IP / UDP / DNS Qry b'v20.events.data.microsoft.com.'
+Ether / IP / UDP / DNS Ans b'win-global-asimov-leafs-events-data.trafficmanager.net.'
+Ether / fe80::1cd8:22fa:b4fb:505 > ff02::16 (0) / IPv6ExtHdrHopByHop / ICMPv6MLReport2
+Ether / IPv6 / UDP / mDNS Qry b'_companion-link._tcp.local.'
+Ether / IP / UDP / DNS Qry b'v10.events.data.microsoft.com.'
+Ether / IP / UDP / DNS Ans b'win-global-asimov-leafs-events-data.trafficmanager.net.'
+Ether / fe80::4e64:c0f:2e31:1c3 > ff02::16 (0) / IPv6ExtHdrHopByHop / ICMPv6MLReport2
+Ether / IP / UDP / DNS Qry b'dns.google.'
+Ether / fe80::4e64:c0f:2e31:1c3 > ff02::16 (0) / IPv6ExtHdrHopByHop / ICMPv6MLReport2
+Ether / fe80::4e64:c0f:2e31:1c3 > ff02::16 (0) / IPv6ExtHdrHopByHop / ICMPv6MLReport2
+Ether / IP / UDP / DNS Ans
+Ether / IPv6 / UDP / mDNS Qry b'_homekit._tcp.local.'
+Ether / ARP who has 192.168.1.116 says 192.168.1.11 / Padding
+Ether / ARP who has 192.168.1.116 says 192.168.1.11 / Padding
+Ether / ARP who has 192.168.1.116 says 192.168.1.11 / Padding
+Ether / fe80::1cd8:22fa:b4fb:505 > ff02::16 (0) / IPv6ExtHdrHopByHop / ICMPv6MLReport2
+Ether / IPv6 / UDP / mDNS Qry b'_companion-link._tcp.local.'
+Ether / fe80::1cd8:22fa:b4fb:505 > ff02::16 (0) / IPv6ExtHdrHopByHop / ICMPv6MLReport2
+Ether / IPv6 / UDP / mDNS Qry b'_companion-link._tcp.local.'
+Ether / fe80::1cd8:22fa:b4fb:505 > ff02::16 (0) / IPv6ExtHdrHopByHop / ICMPv6MLReport2
+Ether / IPv6 / UDP / mDNS Qry b'_companion-link._tcp.local.'
+Ether / IPv6 / UDP / mDNS Qry b'_companion-link._tcp.local.'
+Ether / IPv6 / UDP / mDNS Qry b'_companion-link._tcp.local.'
+Ether / IPv6 / UDP / mDNS Ans b'eLoj._dosvc._tcp.local.'
+Ether / IPv6 / UDP / mDNS Qry b'eLoj._dosvc._tcp.local.'
+Ether / IPv6 / UDP / mDNS Qry b'eLoj._dosvc._tcp.local.'
+Ether / IPv6 / UDP / mDNS Ans b'eLoj._dosvc._tcp.local.'
+Ether / fe80::1cd8:22fa:b4fb:505 > ff02::16 (0) / IPv6ExtHdrHopByHop / ICMPv6MLReport2
+Ether / IPv6 / UDP / mDNS Qry b'_companion-link._tcp.local.'
+Ether / fe80::1cd8:22fa:b4fb:505 > ff02::16 (0) / IPv6ExtHdrHopByHop / ICMPv6MLReport2
+Ether / IPv6 / UDP / mDNS Qry b'_companion-link._tcp.local.'
+Ether / IPv6 / UDP / mDNS Qry b'_companion-link._tcp.local.'
+Ether / IPv6 / UDP / mDNS Qry b'_airplay._tcp.local.'
+Ether / IPv6 / UDP / mDNS Qry b'_airplay._tcp.local.'
+Ether / IPv6 / UDP / mDNS Qry b'_airplay._tcp.local.'
+Ether / IPv6 / UDP / mDNS Qry b'_companion-link._tcp.local.'
+Ether / IPv6 / UDP / mDNS Qry b'_raop._tcp.local.'
+Ether / IPv6 / UDP / mDNS Qry b'_raop._tcp.local.'
+Ether / IPv6 / UDP / mDNS Qry b'_raop._tcp.local.'
+Ether / IPv6 / ICMPv6ND_RA / ICMPv6 Neighbor Discovery Option - Source Link-Layer Address 00:ad:24:f2:48:bd
+Ether / IP / UDP / DNS Qry b'mobile.events.data.microsoft.com.'
+Ether / IP / UDP / DNS Ans b'mobile.events.data.trafficmanager.net.'
+Ether / IPv6 / UDP / mDNS Qry b'_companion-link._tcp.local.'
+Ether / IPv6 / UDP / mDNS Qry b'_companion-link._tcp.local.'
+Ether / IP / UDP / DNS Qry b'main.vscode-cdn.net.'
+Ether / IP / UDP / DNS Ans b'vscode-cdn.z01.azurefd.net.'
+Ether / IPv6 / UDP / mDNS Qry b'_companion-link._tcp.local.'
+Ether / fe80::5818:50ff:feae:621c > ff02::16 (0) / IPv6ExtHdrHopByHop / ICMPv6MLReport2
+Ether / IPv6 / UDP / mDNS Qry b'_googlecast._tcp.local.'
+Ether / fe80::5818:50ff:feae:621c > ff02::16 (0) / IPv6ExtHdrHopByHop / ICMPv6MLReport2
+Ether / IPv6 / UDP / mDNS Qry b'_googlecast._tcp.local.'
+Ether / IPv6 / UDP / mDNS Qry b'_googlecast._tcp.local.'
+Ether / IP / UDP / DNS Qry b'vscode-sync.trafficmanager.net.'
+Ether / IPv6 / UDP / mDNS Qry b'_companion-link._tcp.local.'
+Ether / IPv6 / UDP / mDNS Qry b'_raop._tcp.local.'
+Ether / IPv6 / UDP / mDNS Qry b'_raop._tcp.local.'
+Ether / IPv6 / UDP / mDNS Qry b'_raop._tcp.local.'
+Ether / IPv6 / UDP / mDNS Ans b'eLoj._dosvc._tcp.local.'
+Ether / IPv6 / UDP / mDNS Qry b'eLoj._dosvc._tcp.local.'
+Ether / IPv6 / UDP / mDNS Qry b'eLoj._dosvc._tcp.local.'
+Ether / IPv6 / UDP / mDNS Ans b'eLoj._dosvc._tcp.local.'
+Ether / IP / UDP / DNS Qry b'dns.google.'
+Ether / IPv6 / UDP / mDNS Qry b'_googlecast._tcp.local.'
+Ether / IPv6 / UDP / mDNS Qry b'_companion-link._tcp.local.'
+Ether / IPv6 / UDP / mDNS Qry b'_googlecast._tcp.local.'
+Ether / IPv6 / UDP / mDNS Qry b'_googlecast._tcp.local.'
+Ether / IPv6 / UDP / mDNS Qry b'_googlecast._tcp.local.'
+Ether / IPv6 / UDP / mDNS Qry b'_googlecast._tcp.local.'
+Ether / fe80::5818:50ff:feae:621c > ff02::16 (0) / IPv6ExtHdrHopByHop / ICMPv6MLReport2
+Ether / IP / UDP / DNS Qry b'vscode-sync.trafficmanager.net.'
+Ether / IP / UDP / DNS Ans b'vscode-sync-frc-01.azurewebsites.net.'
+Ether / IP / UDP / DNS Qry b'mobile.events.data.microsoft.com.'
+Ether / IP / UDP / DNS Qry b'proxy.individual.githubcopilot.com.'
+Ether / IP / UDP / DNS Qry b'proxy.individual.githubcopilot.com.'
+Ether / IPv6 / UDP / mDNS Qry b'_companion-link._tcp.local.'
+Ether / IP / UDP / DNS Ans b'copilot-proxy.githubusercontent.com.'
+Ether / ARP who has 192.168.1.11 says 192.168.1.1
+Ether / IPv6 / UDP / mDNS Ans b'eLoj._dosvc._tcp.local.'
+Ether / IPv6 / UDP / mDNS Qry b'eLoj._dosvc._tcp.local.'
+Ether / IPv6 / UDP / mDNS Qry b'eLoj._dosvc._tcp.local.'
+Ether / IPv6 / UDP / mDNS Ans b'eLoj._dosvc._tcp.local.'
+Ether / IP / UDP / DNS Qry b'dns.google.'
+Ether / IPv6 / UDP / mDNS Qry b'_companion-link._tcp.local.'
+Ether / fe80::187f:4328:369f:c927 > ff02::16 (0) / IPv6ExtHdrHopByHop / ICMPv6MLReport2
+Ether / IPv6 / UDP / mDNS Qry b'_companion-link._tcp.local.'
+Ether / fe80::187f:4328:369f:c927 > ff02::16 (0) / IPv6ExtHdrHopByHop / ICMPv6MLReport2
+Ether / IPv6 / UDP / mDNS Qry b'_companion-link._tcp.local.'
+Ether / IPv6 / UDP / mDNS Qry b'_companion-link._tcp.local.'
+Ether / IP / UDP / DNS Qry b'vscode-sync.trafficmanager.net.'
+Ether / IP / UDP / DNS Ans b'vscode-sync-frc-01.azurewebsites.net.'
+Ether / IP / UDP / DNS Qry b'mobile.events.data.microsoft.com.'
+Ether / IPv6 / UDP / mDNS Qry b'_companion-link._tcp.local.'
+Ether / IPv6 / ICMPv6ND_RA / ICMPv6 Neighbor Discovery Option - Source Link-Layer Address 00:ad:24:f2:48:bd
+Ether / IP / UDP / DNS Qry b'g.whatsapp.net.'
+Ether / IP / UDP / DNS Ans b'chat.cdn.whatsapp.net.'
+Ether / IPv6 / UDP / mDNS Ans b'eLoj._dosvc._tcp.local.'
+Ether / IPv6 / UDP / mDNS Qry b'eLoj._dosvc._tcp.local.'
+Ether / IPv6 / UDP / mDNS Qry b'eLoj._dosvc._tcp.local.'
+Ether / IPv6 / UDP / mDNS Ans b'eLoj._dosvc._tcp.local.'
+Ether / IPv6 / UDP / mDNS Qry b'_googlecast._tcp.local.'
+Ether / IPv6 / UDP / mDNS Qry b'_googlecast._tcp.local.'
+Ether / IPv6 / UDP / mDNS Qry b'Android.local.'
+Ether / IPv6 / UDP / mDNS Qry b'Android.local.'
+Ether / IPv6 / UDP / mDNS Qry b'Android.local.'
+Ether / IPv6 / UDP / mDNS Ans b'Android.local.'
+Ether / IPv6 / UDP / mDNS Ans b'Android.local.'
+Ether / IP / UDP / DNS Qry b'c.pki.goog.'
+Ether / IP / UDP / DNS Ans b'pki-goog.l.google.com.'
+Ether / IPv6 / UDP / mDNS Ans b'Android.local.'
+Ether / IP / UDP / DNS Qry b'x1.c.lencr.org.'
+Ether / IP / UDP / DNS Qry b'dns.google.'
+Ether / IPv6 / UDP / mDNS Ans b'Android.local.'
+Ether / IP / UDP / DNS Qry b'mobile.events.data.microsoft.com.'
+Ether / fe80::ac7c:baff:fe4f:5721 > ff02::16 (0) / IPv6ExtHdrHopByHop / ICMPv6MLReport2
+Ether / IPv6 / UDP / mDNS Qry b'Android.local.'
+Ether / IPv6 / UDP / mDNS Qry b'Android.local.'
+Ether / IPv6 / UDP / mDNS Qry b'Android.local.'
+Ether / IPv6 / UDP / mDNS Ans b'Android.local.'
+Ether / IPv6 / UDP / mDNS Ans b'Android.local.'
+Ether / IPv6 / UDP / mDNS Qry b'_companion-link._tcp.local.'
+Ether / IPv6 / UDP / mDNS Ans b'Android.local.'
+Ether / IP / UDP / DNS Qry b'main.vscode-cdn.net.'
+Ether / IP / UDP / DNS Ans b'vscode-cdn.z01.azurefd.net.'
+Ether / IPv6 / UDP / mDNS Ans b'Android.local.'
+Ether / fe80::ac7c:baff:fe4f:5721 > ff02::16 (0) / IPv6ExtHdrHopByHop / ICMPv6MLReport2
+Ether / IPv6 / UDP / mDNS Qry b'Android.local.'
+Ether / IPv6 / UDP / mDNS Qry b'Android.local.'
+Ether / fe80::ac7c:baff:fe4f:5721 > ff02::16 (0) / IPv6ExtHdrHopByHop / ICMPv6MLReport2
+Ether / IPv6 / UDP / mDNS Ans b'Android.local.'
+Ether / IPv6 / UDP / mDNS Ans b'Android.local.'
+Ether / IPv6 / UDP / mDNS Ans b'Android.local.'
+Ether / IPv6 / UDP / mDNS Ans b'Android.local.'
+Ether / ARP who has 192.168.1.11 says 192.168.1.1
+Ether / IPv6 / UDP / mDNS Qry b'_rdlink._tcp.local.'
+Ether / IPv6 / UDP / mDNS Ans b'Android.local.'
+Ether / IPv6 / UDP / mDNS Ans b'eLoj._dosvc._tcp.local.'
+Ether / IPv6 / UDP / mDNS Qry b'eLoj._dosvc._tcp.local.'
+Ether / IPv6 / UDP / mDNS Qry b'eLoj._dosvc._tcp.local.'
+Ether / IPv6 / UDP / mDNS Ans b'eLoj._dosvc._tcp.local.'
+Ether / IP / UDP / DNS Qry b'settings-win.data.microsoft.com.'
+Ether / IP / UDP / DNS Qry b'v10.events.data.microsoft.com.'
+Ether / IP / UDP / DNS Qry b'dns.google.'
+Ether / IP / UDP / DNS Qry b'cs.dds.microsoft.com.'
+Ether / IPv6 / ICMPv6 Neighbor Discovery - Neighbor Solicitation (tgt: fe80::9c84:25ff:fe8c:d393) / ICMPv6NDOptUnknown
+Ether / :: > ff02::16 (0) / IPv6ExtHdrHopByHop / ICMPv6MLReport2
+Ether / fe80::9c84:25ff:fe8c:d393 > ff02::16 (0) / IPv6ExtHdrHopByHop / ICMPv6MLReport2
+Ether / fe80::9c84:25ff:fe8c:d393 > ff02::16 (0) / IPv6ExtHdrHopByHop / ICMPv6MLReport2
+Ether / IPv6 / ICMPv6ND_RA / ICMPv6 Neighbor Discovery Option - Source Link-Layer Address 00:ad:24:f2:48:bd
+Ether / ARP who has 192.168.1.78 says 192.168.1.1
+Ether / ARP who has 192.168.1.78 says 192.168.1.1
+Ether / IP / UDP / DNS Qry b'vscode-sync.trafficmanager.net.'
+Ether / IP / UDP / DNS Qry b'mobile.events.data.microsoft.com.'
+Ether / IPv6 / UDP / mDNS Ans b'eLoj._dosvc._tcp.local.'
+Ether / IPv6 / UDP / mDNS Qry b'eLoj._dosvc._tcp.local.'
+Ether / IPv6 / UDP / mDNS Qry b'eLoj._dosvc._tcp.local.'
+Ether / IPv6 / UDP / mDNS Ans b'eLoj._dosvc._tcp.local.'
+Ether / IPv6 / UDP / mDNS Ans b'Android.local.'
+Ether / IPv6 / UDP / mDNS Qry b'_companion-link._tcp.local.'
+Ether / ARP who has 192.168.0.116 says 192.168.0.1
+Ether / IPv6 / UDP / mDNS Ans b'eLoj._dosvc._tcp.local.'
+Ether / IPv6 / UDP / mDNS Qry b'eLoj._dosvc._tcp.local.'
+Ether / ARP who has 192.168.0.116 says 192.168.0.1
+Ether / fe80::1ce8:919:f420:4992 > ff02::16 (0) / IPv6ExtHdrHopByHop / ICMPv6MLReport2
+Ether / IPv6 / UDP / mDNS Qry b'_companion-link._tcp.local.'
+Ether / IPv6 / UDP / mDNS Ans b'eLoj._dosvc._tcp.local.'
+Ether / ARP who has 192.168.0.116 says 192.168.0.1
+Ether / IPv6 / UDP / mDNS Qry b'_companion-link._tcp.local.'
+Ether / ARP who has 192.168.0.116 says 192.168.0.1
+Ether / IPv6 / UDP / DNS Qry b'mobile.events.data.microsoft.com.'
+Ether / IPv6 / UDP / DNS Qry b'mobile.events.data.microsoft.com.'
+Ether / ARP who has 192.168.0.116 says 192.168.0.1
+Ether / IPv6 / UDP / DNS Ans b'mobile.events.data.trafficmanager.net.'
+Ether / IPv6 / UDP / DNS Ans b'mobile.events.data.trafficmanager.net.'
+Ether / IPv6 / UDP / mDNS Qry b'_raop._tcp.local.'
+Ether / ARP who has 192.168.0.116 says 192.168.0.1
+Ether / IPv6 / UDP / mDNS Qry b'_companion-link._tcp.local.'
+Ether / fe80::1ce8:919:f420:4992 > ff02::16 (0) / IPv6ExtHdrHopByHop / ICMPv6MLReport2
+Ether / ARP who has 192.168.0.122 says 192.168.0.1
+Ether / ARP who has 192.168.0.116 says 192.168.0.1
+Ether / ARP who has 192.168.0.116 says 192.168.0.1
+Ether / ARP who has 192.168.0.116 says 192.168.0.1
+Ether / IPv6 / ICMPv6ND_NS / ICMPv6 Neighbor Discovery Option - Source Link-Layer Address 2c:6d:c1:10:2e:b7
+Ether / ARP who has 192.168.0.116 says 192.168.0.1
+Ether / IPv6 / UDP / mDNS Qry b'_nsdswc._tcp.local.'
+Ether / ARP who has 192.168.0.116 says 192.168.0.1
+Ether / IPv6 / UDP / mDNS Qry b'_companion-link._tcp.local.'
+Ether / IPv6 / UDP / DNS Qry b'mobile.events.data.microsoft.com.'
+Ether / IPv6 / UDP / DNS Qry b'mobile.events.data.microsoft.com.'
+Ether / IPv6 / UDP / DNS Ans b'mobile.events.data.trafficmanager.net.'
+Ether / IPv6 / UDP / DNS Ans b'mobile.events.data.trafficmanager.net.'
+Ether / IPv6 / UDP / mDNS Qry b'b4:fa:48:8d:6a:7c@fe80::b6fa:48ff:fe8d:6a7c-supportsRP-17._apple-mobdev2._tcp.local.'
+Ether / IPv6 / UDP / mDNS Qry b'b4:fa:48:8d:6a:7c@fe80::b6fa:48ff:fe8d:6a7c-supportsRP-17._apple-mobdev2._tcp.local.'
+Ether / ARP who has 192.168.0.116 says 192.168.0.1
+Ether / IPv6 / UDP / mDNS Qry b'_companion-link._tcp.local.'
+Ether / IPv6 / UDP / mDNS Ans [b'']
+Ether / fe80::a0:97e9:7f35:981 > ff02::16 (0) / IPv6ExtHdrHopByHop / ICMPv6MLReport2
+Ether / ARP who has 192.168.0.116 says 192.168.0.1
+Ether / IPv6 / UDP / mDNS Ans [b'']
+Ether / IPv6 / UDP / mDNS Ans b'Iphone-de-loj.local.'
+Ether / ARP who has 192.168.0.116 says 192.168.0.1
+Ether / ARP who has 192.168.0.161 says 192.168.0.1
+Ether / ARP who has 192.168.0.116 says 192.168.0.1
+Ether / IPv6 / UDP / mDNS Qry b'_rdlink._tcp.local.'
+Ether / IPv6 / UDP / mDNS Ans [b'']
+Ether / ARP who has 192.168.0.116 says 192.168.0.1
+Ether / fe80::e498:6ff:fe76:29fc > ff02::16 (0) / IPv6ExtHdrHopByHop / ICMPv6MLReport2
+Ether / fe80::e498:6ff:fe76:29fc > ff02::16 (0) / IPv6ExtHdrHopByHop / ICMPv6MLReport2
+Ether / IPv6 / UDP / mDNS Qry b'I0lIVFf8n14AAA._FC9F5ED42C8A._tcp.local.'
+Ether / IPv6 / UDP / mDNS Qry b'I0lIVFf8n14AAA._FC9F5ED42C8A._tcp.local.'
+Ether / ARP who has 192.168.0.116 says 192.168.0.1
+Ether / IPv6 / UDP / mDNS Ans b'Android_ELTVAFCO.local.'
+Ether / IPv6 / UDP / mDNS Ans [b'']
+Ether / ARP who has 192.168.0.116 says 192.168.0.1
+Ether / IPv6 / ICMPv6ND_NS / ICMPv6 Neighbor Discovery Option - Source Link-Layer Address bc:22:28:26:af:4f
+Ether / IPv6 / UDP / mDNS Ans b'Android_ELTVAFCO.local.'
+Ether / ARP who has 192.168.0.116 says 192.168.0.1
+Ether / IPv6 / UDP / mDNS Ans b'Android_ELTVAFCO.local.'
+Ether / ARP who has 192.168.0.116 says 192.168.0.1
+Ether / ARP who has 192.168.0.116 says 192.168.0.1
+Ether / ARP who has 192.168.0.147 says 192.168.0.1
+Ether / ARP who has 192.168.0.116 says 192.168.0.1
+Ether / ARP who has 192.168.0.116 says 192.168.0.1
+Ether / IPv6 / UDP / mDNS Qry b'_companion-link._tcp.local.'
+Ether / IPv6 / UDP / mDNS Ans b'Android_ELTVAFCO.local.'
+Ether / ARP who has 192.168.0.116 says 192.168.0.1
+Ether / ARP who has 192.168.0.116 says 192.168.0.1
+Ether / ARP who has 192.168.0.116 says 192.168.0.1
+Ether / ARP who has 192.168.0.116 says 192.168.0.1
+Ether / ARP who has 192.168.0.116 says 192.168.0.1
+Ether / ARP who has 192.168.0.116 says 192.168.0.1
+Ether / IPv6 / TCP fd01::d8be:4406:b71d:e61d:46156 > 2a03:2880:f242:c6:face:b00c:0:7260:https S
+Ether / ARP who has 192.168.0.116 says 192.168.0.1
+Ether / IPv6 / TCP fd01::d8be:4406:b71d:e61d:46156 > 2a03:2880:f242:c6:face:b00c:0:7260:https S
+Ether / ARP who has 192.168.0.116 says 192.168.0.1
+Ether / IPv6 / UDP / mDNS Ans b'Android_ELTVAFCO.local.'
+Ether / ARP who has 192.168.0.116 says 192.168.0.1
+Ether / IPv6 / TCP fd01::d8be:4406:b71d:e61d:46156 > 2a03:2880:f242:c6:face:b00c:0:7260:https S
+Ether / ARP who has 192.168.0.116 says 192.168.0.1
+Ether / IPv6 / ICMPv6ND_RA / ICMPv6NDOptPrefixInfo / ICMPv6NDOptRouteInfo / ICMPv6NDOptMTU / ICMPv6NDOptSrcLLAddr / ICMPv6 Neighbor Discovery Option - Recursive DNS Server Option fe80::be22:28ff:fe26:af4f
+Ether / ARP who has 192.168.0.116 says 192.168.0.1
+Ether / IPv6 / ICMPv6ND_NS / ICMPv6 Neighbor Discovery Option - Source Link-Layer Address bc:22:28:26:af:4f
+Ether / ARP who has 192.168.0.116 says 192.168.0.1
+Ether / ARP who has 192.168.0.116 says 192.168.0.1
+Ether / IPv6 / TCP fd01::d8be:4406:b71d:e61d:46156 > 2a03:2880:f242:c6:face:b00c:0:7260:https S
+Ether / fd01::1 > fd01::d8be:4406:b71d:e61d (58) / ICMPv6DestUnreach / IPerror6 / TCPerror
+Ether / ARP who has 192.168.0.116 says 192.168.0.1
+Ether / IPv6 / ICMPv6ND_NS / ICMPv6 Neighbor Discovery Option - Source Link-Layer Address 2c:6d:c1:10:2e:b7
+Ether / ARP who has 192.168.0.116 says 192.168.0.1
+Ether / ARP who has 192.168.0.149 says 192.168.0.1
+Ether / ARP who has 192.168.0.116 says 192.168.0.1
+Ether / ARP who has 192.168.0.116 says 192.168.0.1
+Ether / IPv6 / UDP / mDNS Qry b'_rdlink._tcp.local.'
+Ether / ARP who has 192.168.0.116 says 192.168.0.1
+Ether / ARP who has 192.168.0.116 says 192.168.0.1
+Ether / IPv6 / TCP fd01::d8be:4406:b71d:e61d:46156 > 2a03:2880:f242:c6:face:b00c:0:7260:https S
+Ether / fd01::1 > fd01::d8be:4406:b71d:e61d (58) / ICMPv6DestUnreach / IPerror6 / TCPerror
+Ether / ARP who has 192.168.0.116 says 192.168.0.1
+Ether / ARP who has 192.168.0.116 says 192.168.0.1
+Ether / IPv6 / ICMPv6ND_NS / ICMPv6 Neighbor Discovery Option - Source Link-Layer Address bc:22:28:26:af:4f
+Ether / IPv6 / UDP / mDNS Ans b'b4:fa:48:8d:6a:7c@fe80::b6fa:48ff:fe8d:6a7c-supportsRP-17._apple-mobdev2._tcp.local.'
+Ether / ARP who has 192.168.0.116 says 192.168.0.1
+Ether / IPv6 / UDP / mDNS Ans b'Android_ELTVAFCO.local.'
+Ether / ARP who has 192.168.0.1 says 192.168.0.149
+Ether / ARP who has 192.168.0.116 says 192.168.0.1
+Ether / ARP who has 192.168.0.116 says 192.168.0.1
+Ether / ARP who has 192.168.0.116 says 192.168.0.1
+Ether / ARP who has 192.168.0.116 says 192.168.0.1
+Ether / ARP who has 192.168.0.116 says 192.168.0.1
+Ether / ARP who has 192.168.0.116 says 192.168.0.1
