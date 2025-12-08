@@ -1,0 +1,10 @@
+{
+  "users": [
+    {
+      "username": "rayou",
+      "password_hash": "a6cfa2d46698c3ebfba648207a652347863de604cedc7d7cb289216cfaf2e394",
+      "salt": "a1b2c3d4e5f6a7b8",
+      "role": "admin"
+    }
+  ]
+}
