@@ -1,0 +1,9 @@
+[
+    {
+        "name": "TCP",
+        "field": "Protocol",
+        "operator": "equals",
+        "value": "TCP",
+        "action": "Alert"
+    }
+]

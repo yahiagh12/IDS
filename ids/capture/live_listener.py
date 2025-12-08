@@ -7,49 +7,47 @@ import time
 class LiveListener:
     """
     LiveListener permet de capturer les paquets réseau en temps réel
-    avec plusieurs backends : Scapy, PyShark ou raw socket.
+    avec plusieurs backends : Scapy, PyShark et raw socket.
     """
 
-    def __init__(self, backend="scapy", interface=None, filter_exp="ip"):
+    def __init__(self, interface=None, filter_exp="ip"):
         """
-        :param backend: 'scapy', 'pyshark' ou 'socket'
         :param interface: interface réseau à écouter (ex: 'wlan0')
         :param filter_exp: filtre BPF / display filter (ex: 'ip')
         """
-        self.backend = backend.lower()
         self.interface = interface
         self.filter_exp = filter_exp
         self.is_running = False
-        self.engine = self._init_engine()
 
-    def _init_engine(self):
-        if self.backend == "scapy":
-            return ScapyCapture(self.interface, self.filter_exp)
-        elif self.backend == "pyshark":
-            return PysharkCapture(self.interface, self.filter_exp)
-        elif self.backend == "socket":
-            return SocketSniffer(self.interface)
-        else:
-            raise ValueError(f"Backend inconnu: {self.backend}")
+        # Initialize engines for all backends
+        self.engines = {
+            "scapy": ScapyCapture(self.interface, self.filter_exp),
+            "pyshark": PysharkCapture(self.interface, self.filter_exp),
+            "socket": SocketSniffer(self.interface)
+        }
+
+        self.threads = []
 
     def listen(self, callback):
         """
-        Démarre la capture avec le backend choisi.
+        Démarre la capture avec tous les backends.
         :param callback: fonction qui reçoit chaque paquet capturé
         """
-        print(f"[LiveListener] Starting capture using {self.backend} on interface {self.interface}")
+        print(f"[LiveListener] Starting capture on interface {self.interface}")
         self.is_running = True
-        
+
         try:
-            # Lancer dans un thread pour ne pas bloquer
-            t = threading.Thread(target=self._capture_thread, args=(callback,))
-            t.daemon = True
-            t.start()
-            
-            # Attendre que l'utilisateur arrête avec Ctrl+C
+            # Launch a thread for each engine
+            for backend, engine in self.engines.items():
+                t = threading.Thread(target=self._capture_thread, args=(engine, callback, backend))
+                t.daemon = True
+                t.start()
+                self.threads.append(t)
+
+            # Wait until stopped
             while self.is_running:
                 time.sleep(0.1)
-                
+
         except KeyboardInterrupt:
             print("\n[LiveListener] Capture stopped by user")
         except Exception as e:
@@ -58,23 +56,25 @@ class LiveListener:
             self.stop()
             print("[LiveListener] Capture ended")
 
-    def _capture_thread(self, callback):
+    def _capture_thread(self, engine, callback, backend):
         """Thread pour la capture des paquets"""
         try:
-            self.engine.start(callback)
+            print(f"[LiveListener] Starting {backend} backend")
+            engine.start(callback)
         except Exception as e:
-            print(f"[LiveListener] Capture thread error: {e}")
+            print(f"[LiveListener] {backend} thread error: {e}")
             self.is_running = False
 
     def stop(self):
         """Arrête la capture"""
         self.is_running = False
-        # Note: Scapy n'a pas de méthode stop(), donc on catch l'exception
-        try:
-            if hasattr(self.engine, 'stop'):
-                self.engine.stop()
-        except:
-            pass
+        for backend, engine in self.engines.items():
+            try:
+                if hasattr(engine, 'stop'):
+                    engine.stop()
+                print(f"[LiveListener] Stopped {backend} backend")
+            except Exception as e:
+                print(f"[LiveListener] Error stopping {backend} backend: {e}")
 
 # ===== TEST CODE - RUN DIRECTLY =====
 def print_packet(pkt):
