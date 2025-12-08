@@ -10,7 +10,21 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-RULES_FILE = "rules.json"
+# Find rules.json file location after restructuring
+def get_rules_file():
+    """Locate rules.json file."""
+    # Try config/ folder first (after restructuring)
+    config_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "config", "rules.json")
+    if os.path.exists(config_path):
+        return config_path
+    # Fall back to root directory (for backward compatibility)
+    root_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "rules.json")
+    if os.path.exists(root_path):
+        return root_path
+    # Default to config/rules.json (preferred location)
+    return os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "config", "rules.json")
+
+RULES_FILE = get_rules_file()
 
 # Available field options for rule creation
 AVAILABLE_FIELDS = ["Source IP", "Destination IP", "Protocol", "Port", "Length", "TTL"]

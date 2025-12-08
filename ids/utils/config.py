@@ -18,7 +18,11 @@ _DEFAULTS: Dict[str, Any] = {
 
 _cfg: Dict[str, Any] = {}
 
-_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'config.json'))
+# Try to find config.json in the config/ folder (after restructuring)
+_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', 'config', 'config.json'))
+# Fall back to ids/config.json for backward compatibility
+if not os.path.exists(_path):
+    _path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'config.json'))
 
 
 def load():

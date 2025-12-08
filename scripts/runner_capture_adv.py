@@ -3,9 +3,9 @@
 Runner principal pour le projet ids_advanced.
 """
 
-from .gui.capture_gui_adv import CaptureGUI
-from .capture.live_listener_adv import LiveListener
-from .traffic_analyser import TrafficAnalyzer
+from ids.gui.capture_gui_adv import CaptureGUI
+from ids.capture.live_listener_adv import LiveListener
+from ids.traffic_analyser import TrafficAnalyzer
 
 import argparse
 

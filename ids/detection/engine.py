@@ -19,14 +19,30 @@ from ids.utils.normalization import normalize_field_name, normalize_operator, is
 
 logger = logging.getLogger(__name__)
 
-RULES_FILE = "rules.json"
+# Find rules.json in config folder or current directory
+def get_rules_file():
+    """Locate rules.json file."""
+    # Try config/ folder first (after restructuring)
+    config_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "config", "rules.json")
+    if os.path.exists(config_path):
+        return config_path
+    # Fall back to root directory (for backward compatibility)
+    root_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "rules.json")
+    if os.path.exists(root_path):
+        return root_path
+    # Default to current directory
+    return "rules.json"
+
+RULES_FILE = get_rules_file()
 
 
 def load_rules():
     """Load rules from the configuration file."""
-    if not os.path.exists(RULES_FILE):
+    rules_file = get_rules_file()
+    if not os.path.exists(rules_file):
+        logger.warning(f"Rules file not found at {rules_file}")
         return []
-    with open(RULES_FILE, "r") as file:
+    with open(rules_file, "r") as file:
         return json.load(file)
 
 
