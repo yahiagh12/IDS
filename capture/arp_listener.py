@@ -1,53 +1,26 @@
-# capture/arp_listener.py
-"""
-Module arp_listener
-
-Ce module écoute les paquets ARP sur une interface réseau donnée
-et affiche les adresses IP et MAC des paquets ARP détectés.
-"""
-
-from scapy.all import ARP, sniff
+from scapy.all import sniff, ARP
 
 class ARPListener:
-    """
-    ARPListener : capture et affiche les paquets ARP sur une interface.
-    """
-
     def __init__(self, interface="eth0"):
-        """
-        Args:
-            interface (str): interface réseau à écouter (ex: "eth0", "wlan0")
-        """
         self.interface = interface
         self.is_running = False
 
-    def _process_packet(self, packet):
-        """
-        Fonction appelée pour chaque paquet capturé.
-        Affiche les informations ARP.
-        """
-        if packet.haslayer(ARP):
-            arp_op = "who-has" if packet[ARP].op == 1 else "is-at"
-            print(f"[ARP] {arp_op} | {packet[ARP].psrc} -> {packet[ARP].pdst} | MAC: {packet[ARP].hwsrc}")
+    def _process_packet(self, pkt):
+        if pkt.haslayer(ARP):
+            pkt.protocol = "arp"
+            # Extract source IP and MAC from ARP layer
+            arp_layer = pkt[ARP]
+            pkt.src = arp_layer.psrc  # ARP sender IP (Proxy Source)
+            pkt.src_mac = arp_layer.hwsrc  # ARP sender MAC (Hardware Source)
+            pkt.dst = arp_layer.pdst  # ARP target IP (Proxy Destination)
+            pkt.dst_mac = arp_layer.hwdst  # ARP target MAC (Hardware Destination)
+            return pkt
+
+    def sniff_one(self):
+        sniff(iface=self.interface, filter="arp", prn=self._process_packet, count=1, store=False)
 
     def start(self):
-        """Démarre la capture ARP."""
-        print(f"[INFO] Démarrage de l'écoute ARP sur l'interface {self.interface}...")
         self.is_running = True
-        try:
-            sniff(iface=self.interface, filter="arp", prn=self._process_packet, store=False)
-        except KeyboardInterrupt:
-            print("\n[INFO] Capture ARP arrêtée par l'utilisateur")
-        finally:
-            self.stop()
 
     def stop(self):
-        """Arrête la capture."""
         self.is_running = False
-        print("[INFO] Capture ARP terminée")
-
-
-# ===== Test du module =====
-if __name__ == "__main__":
-    listener = ARPListener(interface="lo")  # Remplace "lo" par ton interface
-    listener.start()

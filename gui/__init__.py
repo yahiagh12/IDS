@@ -1,7 +1,7 @@
 # gui/__init__.py
 """
 Package gui pour le projet ids_advanced.
-
+<s
 Ce package contient les modules pour l'interface graphique :
 - capture_gui_adv.py : GUI pour le contrôle et la visualisation des captures réseau
 """
