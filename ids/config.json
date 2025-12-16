@@ -1,0 +1,15 @@
+{
+  "simple_rate": {
+    "window": 0.5,
+    "threshold": 10
+  },
+  "syn_flood": {
+    "window": 0.5,
+    "threshold": 10
+  },
+  "udp_flood": {
+    "window": 0.5,
+    "threshold": 10
+  },
+  "queue_maxsize": 5000
+}

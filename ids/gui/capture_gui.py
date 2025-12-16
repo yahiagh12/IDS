@@ -1,0 +1,1654 @@
+#!/usr/bin/env python3
+"""Unified IDS GUI with IPv4 and IPv6 Detection.
+
+This module provides `run()` which launches the Tk GUI with merged functionality
+from both capture_gui (IPv4) and capture_gui_adv (IPv6).
+Supports both legacy IPv4 detection and advanced IPv6 analysis.
+"""
+
+import os
+import sys
+import signal
+import threading
+import queue
+import tkinter as tk
+from tkinter import ttk, messagebox, scrolledtext
+from datetime import datetime
+import logging
+from collections import defaultdict
+import json
+import matplotlib.pyplot as plt
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+
+from ids.capture.live_listener import LiveListener
+from ids.detection.engine import DetectionEngine
+from ids.traffic_analyser import TrafficAnalyzer
+from ids.detection_ipv6 import IPv6AttackDetector
+from ids.gui.ui_helpers import (
+    create_treeview_with_scrollbar, get_finding_color, apply_row_color,
+    show_error, show_info
+)
+from ids.gui.rules_manager import (
+    load_rules_from_file, save_rules_to_file, validate_rule,
+    AVAILABLE_FIELDS, AVAILABLE_OPERATORS, AVAILABLE_ACTIONS
+)
+
+logger = logging.getLogger(__name__)
+
+
+# Add the project root directory to PYTHONPATH
+def _add_project_root_to_path():
+    project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../"))
+    if project_root not in sys.path:
+        sys.path.insert(0, project_root)
+
+_add_project_root_to_path()
+
+
+class UnifiedCaptureGUI:
+    """Unified IDS GUI supporting both IPv4 (Legacy) and IPv6 (Advanced) Detection."""
+    
+    # Color schemes
+    PROTO_COLORS = {
+        "arp": "#3498db",      # Blue
+        "icmp": "#2ecc71",     # Green
+        "dns": "#9b59b6",      # Purple
+        "ipv6": "#e74c3c",     # Red
+        "tcp": "#e67e22",      # Orange
+        "udp": "#95a5a6",      # Gray
+        "alert": "#c0392b",    # Dark Red
+        "other": "#2c3e50"     # Dark Gray
+    }
+
+    ATTACK_COLORS = {
+        "SYN Scan": "#e67e22",
+        "SYN Flood": "#c0392b",
+        "XMAS Scan": "#8e44ad",
+        "NULL Scan": "#7f8c8d",
+        "UDP Flood": "#2980b9",
+        "ICMP Flood": "#27ae60",
+        "ARP Flood": "#a93226",
+        "ARP Spoofing": "#c2185b",
+        "DNS Flood": "#0097a7"
+    }
+
+    ATTACK_DESCRIPTIONS = {
+        "SYN Scan": "Port scanning technique using SYN packets to identify open ports",
+        "SYN Flood": "Denial of Service attack flooding target with SYN packets",
+        "XMAS Scan": "Stealth scanning method using FIN+PSH+URG flags",
+        "NULL Scan": "Stealth port scan using packets with no flags set",
+        "UDP Flood": "DDoS attack overwhelming target with UDP packets",
+        "ICMP Flood": "Denial of Service via high-volume ICMP echo requests",
+        "ARP Flood": "Network saturation attack through ARP packet flooding",
+        "ARP Spoofing": "Man-in-the-middle attack impersonating network devices",
+        "DNS Flood": "DNS query flooding attack causing service degradation"
+    }
+
+    def __init__(self, root):
+        self.root = root
+        root.title("IDS Advanced - Network Threat Detection System")
+        root.geometry("1600x950")
+        root.configure(bg="#ecf0f1")
+        
+        # Handle window close event
+        root.protocol("WM_DELETE_WINDOW", self._on_window_close)
+        
+        # Stack selector mode (IPv4 or IPv6)
+        self.mode = tk.StringVar(value="ipv4")
+        
+        # Shared listener for both IPv4 and IPv6
+        self.listener = None
+        self.capture_thread = None
+        self.is_listening = False
+        self.detection_engine = DetectionEngine()
+        
+        # ===== IPv4 DETECTION SYSTEM =====
+        # Grouping system for IPv4 detections
+        self.detection_groups = {}  # Maps group_key -> {data, count, timestamps, item_id}
+        
+        # ===== IPv6 DETECTION SYSTEM (ADVANCED) =====
+        self.ipv6_detector = IPv6AttackDetector()
+        self.analyzer = TrafficAnalyzer()
+        
+        # Statistics for advanced analytics
+        self.packet_count = 0
+        self.alert_count = 0
+        self.protocol_counts = defaultdict(int)
+        self.alerted_protocols = defaultdict(int)  # Protocols with detections/alerts
+        self.attack_counts = defaultdict(int)
+        self.attack_timeline = defaultdict(int)
+        self.attacker_ips = defaultdict(int)
+        self.behavioral_anomalies = []
+        
+        # Configuration
+        self.is_paused = False
+        self.filter_protocols = {"arp", "icmp", "dns", "ipv6", "tcp", "udp"}
+        self.log_file = "logs.txt"
+        
+        # Build mode selector at top (now with 3 modes: Listener, IPv4, IPv6)
+        self._build_mode_selector()
+        
+        # Create main container
+        self.main_container = ttk.Frame(root)
+        self.main_container.pack(fill='both', expand=True)
+        
+        # ========== LISTENER TAB (Shared) ==========
+        self.listener_tab = ttk.Frame(self.main_container)
+        self.listener_notebook = ttk.Notebook(self.listener_tab)
+        self.listener_notebook.pack(fill='both', expand=True)
+        
+        # Packet capture will be in listener_tab
+        self.capture_tab = ttk.Frame(self.listener_notebook)
+        self.listener_notebook.add(self.capture_tab, text="📝 Live Capture")
+        
+        # Create notebook for IPv4 tabs (without capture)
+        self.ipv4_tab_control = ttk.Notebook(self.main_container)
+        
+        # Build IPv4 tabs (WITHOUT capture tab now)
+        self.detections_tab = ttk.Frame(self.ipv4_tab_control)
+        self.ipv4_tab_control.add(self.detections_tab, text="🛡️  IPv4 Detections & Alerts")
+        
+        self.settings_tab = ttk.Frame(self.ipv4_tab_control)
+        self.ipv4_tab_control.add(self.settings_tab, text="⚙️  Settings")
+        
+        self.rules_tab = ttk.Frame(self.ipv4_tab_control)
+        self.ipv4_tab_control.add(self.rules_tab, text="📋 Custom Rules")
+        
+        self.stats_tab = ttk.Frame(self.ipv4_tab_control)
+        self.ipv4_tab_control.add(self.stats_tab, text="📊 Statistics")
+        
+        # Create notebook for IPv6 tabs (without capture)
+        self.ipv6_tab_control = ttk.Notebook(self.main_container)
+        
+        self.ipv6_detections_tab = ttk.Frame(self.ipv6_tab_control)
+        self.ipv6_tab_control.add(self.ipv6_detections_tab, text="🛡️  IPv6 Detections")
+        
+        self.baseline_tab = ttk.Frame(self.ipv6_tab_control)
+        self.ipv6_tab_control.add(self.baseline_tab, text="📈 Traffic Baseline")
+        
+        self.analytics_tab = ttk.Frame(self.ipv6_tab_control)
+        self.ipv6_tab_control.add(self.analytics_tab, text="🔍 Advanced Analytics")
+        
+        self.ipv6_alerts_tab = ttk.Frame(self.ipv6_tab_control)
+        self.ipv6_tab_control.add(self.ipv6_alerts_tab, text="⚠️  IPv6 Alerts")
+        
+        self.ipv6_settings_tab = ttk.Frame(self.ipv6_tab_control)
+        self.ipv6_tab_control.add(self.ipv6_settings_tab, text="⚙️  Settings")
+        
+        # Build individual tabs
+        self._build_capture_tab()
+        self._build_detections_tab()
+        self._build_settings_tab()
+        self._build_rules_tab()
+        self._build_stats_tab()
+        self._build_ipv6_detections_tab()
+        self._build_baseline_tab()
+        self._build_analytics_tab()
+        self._build_ipv6_alerts_tab()
+        self._build_ipv6_settings_tab()
+        
+        # Show Listener mode by default
+        self._switch_mode("listener")
+        
+        # Refresh interfaces
+        self.refresh_interfaces()
+
+    # ========== MODE SELECTOR ==========
+    def _build_mode_selector(self):
+        """Build the top mode selector with 3 buttons: Listener, IPv4, IPv6."""
+        selector_frame = tk.Frame(self.root, bg="#2c3e50", height=60)
+        selector_frame.pack(fill=tk.X, padx=0, pady=0)
+        
+        title_label = tk.Label(
+            selector_frame,
+            text="IDS Network Threat Detection System",
+            font=("Arial", 14, "bold"),
+            bg="#2c3e50", fg="white", pady=5
+        )
+        title_label.pack(fill=tk.X)
+        
+        # Selection frame
+        select_frame = tk.Frame(selector_frame, bg="#2c3e50")
+        select_frame.pack(fill=tk.X, padx=15, pady=5)
+        
+        tk.Label(select_frame, text="Select Module:", 
+                font=("Arial", 11, "bold"), bg="#2c3e50", fg="white").pack(side=tk.LEFT, padx=5)
+        
+        listener_btn = tk.Button(select_frame, text="🎧 Packet Listener", 
+                             command=lambda: self._switch_mode("listener"),
+                             font=("Arial", 10, "bold"),
+                             bg="#27ae60", fg="white", padx=15, pady=8)
+        listener_btn.pack(side=tk.LEFT, padx=10)
+        self.listener_btn = listener_btn
+        
+        ipv4_btn = tk.Button(select_frame, text="📡 IPv4 Detection", 
+                             command=lambda: self._switch_mode("ipv4"),
+                             font=("Arial", 10, "bold"),
+                             bg="#3498db", fg="white", padx=15, pady=8)
+        ipv4_btn.pack(side=tk.LEFT, padx=10)
+        self.ipv4_btn = ipv4_btn
+        
+        ipv6_btn = tk.Button(select_frame, text="🔷 IPv6 Detection", 
+                             command=lambda: self._switch_mode("ipv6"),
+                             font=("Arial", 10, "bold"),
+                             bg="#95a5a6", fg="white", padx=15, pady=8)
+        ipv6_btn.pack(side=tk.LEFT, padx=10)
+        self.ipv6_btn = ipv6_btn
+        
+        info_label = tk.Label(select_frame, text="", font=("Arial", 9), 
+                             bg="#2c3e50", fg="#ecf0f1")
+        info_label.pack(side=tk.LEFT, padx=20)
+        self.mode_info_label = info_label
+
+    def _switch_mode(self, mode):
+        """Switch between Listener, IPv4, and IPv6 modes."""
+        self.mode.set(mode)
+        
+        # Hide all tab controls first
+        if hasattr(self, 'listener_tab'):
+            self.listener_tab.pack_forget()
+        if hasattr(self, 'listener_notebook'):
+            self.listener_notebook.pack_forget()
+        self.ipv4_tab_control.pack_forget()
+        self.ipv6_tab_control.pack_forget()
+        
+        # Update button styles and show appropriate tabs
+        if mode == "listener":
+            self.listener_btn.config(bg="#27ae60", fg="white")
+            self.ipv4_btn.config(bg="#95a5a6", fg="white")
+            self.ipv6_btn.config(bg="#95a5a6", fg="white")
+            self.listener_tab.pack(fill='both', expand=True)
+            self.listener_notebook.pack(fill='both', expand=True)
+        elif mode == "ipv4":
+            self.listener_btn.config(bg="#95a5a6", fg="white")
+            self.ipv4_btn.config(bg="#3498db", fg="white")
+            self.ipv6_btn.config(bg="#95a5a6", fg="white")
+            self.mode_info_label.config(text="IPv4: Traditional network attacks (ARP Spoof, SYN Flood, UDP Flood, Port Scans)")
+            self.ipv4_tab_control.pack(fill='both', expand=True)
+        else:  # IPv6
+            self.listener_btn.config(bg="#95a5a6", fg="white")
+            self.ipv4_btn.config(bg="#95a5a6", fg="white")
+            self.ipv6_btn.config(bg="#e74c3c", fg="white")
+            self.mode_info_label.config(text="IPv6: Advanced threats (Behavioral analysis, Traffic baselines, Anomaly detection)")
+            self.ipv6_tab_control.pack(fill='both', expand=True)
+
+    # ========== CAPTURE TAB ==========
+    def _build_capture_tab(self):
+        """Build the shared packet listener tab (used by both IPv4 and IPv6)."""
+        # Professional header frame
+        header_frame = tk.Frame(self.capture_tab, bg="#34495e", height=80)
+        header_frame.pack(fill=tk.X, padx=0, pady=0)
+        
+        header_label = tk.Label(
+            header_frame,
+            text="🎧 PACKET LISTENER & CAPTURE CONTROL",
+            font=("Arial", 12, "bold"),
+            bg="#34495e", fg="white", pady=10
+        )
+        header_label.pack(fill=tk.X)
+        
+        info_label = tk.Label(
+            header_frame,
+            text="Unified packet capture for IPv4 and IPv6 threat detection analysis",
+            font=("Arial", 9), fg="#bdc3c7", bg="#34495e"
+        )
+        info_label.pack(anchor=tk.W, padx=15)
+        
+        # Configuration frame
+        config_frame = tk.Frame(self.capture_tab, bg="#ecf0f1")
+        config_frame.pack(fill=tk.X, padx=10, pady=5)
+        
+        tk.Label(config_frame, text="Network Interface:", font=("Arial", 10, "bold"), bg="#ecf0f1").pack(side=tk.LEFT, padx=5)
+        
+        self.iface_var = tk.StringVar(value="lo")
+        self.iface_combo = ttk.Combobox(config_frame, textvariable=self.iface_var, state="readonly", width=20)
+        self.iface_combo.pack(side=tk.LEFT, padx=5)
+        
+        # Control buttons
+        tk.Button(config_frame, text="▶ Start Capture", command=self.start_capture, 
+                 bg="#27ae60", fg="white", padx=15, font=("Arial", 10, "bold")).pack(side=tk.LEFT, padx=5)
+        tk.Button(config_frame, text="⏹ Stop", command=self.stop_capture,
+                 bg="#c0392b", fg="white", padx=10).pack(side=tk.LEFT, padx=2)
+        tk.Button(config_frame, text="⏸ Pause", command=self.pause_capture,
+                 bg="#f39c12", fg="white", padx=10).pack(side=tk.LEFT, padx=2)
+        tk.Button(config_frame, text="⏯ Resume", command=self.resume_capture,
+                 bg="#3498db", fg="white", padx=10).pack(side=tk.LEFT, padx=2)
+        
+        # Protocol filtering
+        protocol_frame = tk.Frame(self.capture_tab, bg="#ecf0f1")
+        protocol_frame.pack(fill=tk.X, padx=10, pady=5)
+        
+        tk.Label(protocol_frame, text="Monitor Protocols:", font=("Arial", 10, "bold"), bg="#ecf0f1").pack(side=tk.LEFT, padx=5)
+        
+        self.protocol_vars = {}
+        protocols = ["ARP", "ICMP", "DNS", "IPv6", "TCP", "UDP"]
+        for proto in protocols:
+            var = tk.BooleanVar(value=True)
+            cb = tk.Checkbutton(protocol_frame, text=proto, variable=var, 
+                               command=self._update_filter, bg="#ecf0f1")
+            cb.pack(side=tk.LEFT, padx=3)
+            self.protocol_vars[proto.lower()] = var
+        
+        # Live packet list with border
+        list_frame = tk.Frame(self.capture_tab, bg="#34495e", bd=1, relief=tk.SUNKEN)
+        list_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=5)
+        
+        list_label = tk.Label(list_frame, text="Live Packet Capture Log (Real-time)", 
+                             font=("Arial", 10, "bold"), bg="#34495e", fg="white", pady=5)
+        list_label.pack(fill=tk.X)
+        
+        self.packet_list = scrolledtext.ScrolledText(list_frame, width=150, height=25,
+                                                     bg="#2c3e50", fg="#ecf0f1", font=("Courier", 9))
+        self.packet_list.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
+        
+        # Tag colors for protocols
+        for proto, color in self.PROTO_COLORS.items():
+            self.packet_list.tag_config(proto, foreground=color)
+        
+        # Also initialize IPv6 packet list reference (for dual display)
+        self.ipv6_packet_list = self.packet_list  # Shared reference
+
+    # ========== DETECTIONS TAB (IPv4) ==========
+    def _build_detections_tab(self):
+        """Build the IPv4 detections & alerts display tab."""
+        # Professional header
+        alert_header = tk.Label(self.detections_tab,
+                               text="🛡️  IPv4 DETECTIONS & THREAT ALERTS",
+                               font=("Arial", 12, "bold"),
+                               bg="#3498db", fg="white", pady=10)
+        alert_header.pack(fill=tk.X)
+        
+        info_text = tk.Label(self.detections_tab,
+                            text="Real-time IPv4 threat detection: Port Scans, SYN Floods, UDP Floods, ARP Spoofing, DNS Anomalies",
+                            font=("Arial", 9), fg="#7f8c8d", bg="#ecf0f1")
+        info_text.pack(anchor=tk.W, padx=15, pady=5)
+
+        # Filter frame for IPv4 detections
+        filter_frame = tk.Frame(self.detections_tab, bg="#ecf0f1")
+        filter_frame.pack(fill=tk.X, padx=10, pady=5)
+        
+        tk.Label(filter_frame, text="Filter by Attack Type:", font=("Arial", 10, "bold"), bg="#ecf0f1").pack(side=tk.LEFT, padx=5)
+        
+        self.ipv4_attack_filter = tk.StringVar(value="All")
+        attack_types = ["All", "Udp Flood", "Tcp Flood", "Arp Spoof", "Dns Anomaly", "Large Packet Flood", "Small Packet Anomaly", "Tls Traffic Alert", "External Ip Access", "Rule Match"]
+        ipv4_filter_combo = ttk.Combobox(filter_frame, textvariable=self.ipv4_attack_filter, 
+                                         values=attack_types, state="readonly", width=20)
+        ipv4_filter_combo.pack(side=tk.LEFT, padx=5)
+        ipv4_filter_combo.bind("<<ComboboxSelected>>", lambda e: self._filter_ipv4_detections())
+
+        # Header with controls
+        header_frame = ttk.Frame(self.detections_tab)
+        header_frame.pack(fill="x", padx=10, pady=5)
+        
+        ttk.Label(header_frame, text="IPv4 Detections:", font=("Arial", 11, "bold")).pack(side="left", anchor="w")
+        
+        ttk.Button(header_frame, text="🗑️  Delete", width=12, command=self._delete_detection).pack(side="right", padx=5)
+        ttk.Button(header_frame, text="Clear All", width=12, command=self._clear_all_detections).pack(side="right", padx=2)
+
+        # Detection tree
+        columns = ("Time", "Type", "Protocol", "Severity", "Source", "Destination", "Count", "Details")
+        column_definitions = [
+            ("Time", 150, "Time"),
+            ("Type", 120, "Attack Type"),
+            ("Protocol", 80, "Protocol"),
+            ("Severity", 80, "Severity"),
+            ("Source", 150, "Source IP:Port"),
+            ("Destination", 150, "Dest IP:Port"),
+            ("Count", 80, "Packet Count"),
+            ("Details", 250, "Details")
+        ]
+
+        self.detections_tree, scrollbar = create_treeview_with_scrollbar(
+            self.detections_tab, columns, column_definitions
+        )
+        
+        self.detections_tree.pack(fill="both", expand=True, padx=10, pady=5)
+        scrollbar.pack(side="right", fill="y")
+
+        self.detections_tree.bind("<Double-1>", self._on_detection_double_click)
+        self.detections_tree.bind("<Delete>", self._on_delete_key)
+
+    # ========== ALERTS TAB (IPv6 ADVANCED) ==========
+    # ========== SETTINGS TAB ==========
+    def _build_settings_tab(self):
+        """Build the settings tab with professional layout matching other tabs."""
+        from ids.utils import config as cfg
+        
+        # Professional header frame
+        header_frame = tk.Frame(self.settings_tab, bg="#34495e", height=80)
+        header_frame.pack(fill=tk.X, padx=0, pady=0)
+        
+        header_label = tk.Label(header_frame, 
+                               text="⚙️  IPv4 DETECTION CONFIGURATION & THRESHOLDS",
+                               font=("Arial", 12, "bold"),
+                               bg="#34495e", fg="white", pady=10)
+        header_label.pack(fill=tk.X)
+        
+        info_text = tk.Label(header_frame, text="Adjust detection thresholds. Changes take effect immediately.",
+                            font=("Arial", 9), fg="#bdc3c7", bg="#34495e")
+        info_text.pack(anchor=tk.W, padx=15)
+
+        # Scrollable frame
+        canvas = tk.Canvas(self.settings_tab, bg="#ecf0f1")
+        scrollbar = ttk.Scrollbar(self.settings_tab, orient="vertical", command=canvas.yview)
+        scrollable_frame = ttk.Frame(canvas)
+
+        scrollable_frame.bind("<Configure>", lambda e: canvas.configure(scrollregion=canvas.bbox("all")))
+        canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
+        canvas.configure(yscrollcommand=scrollbar.set)
+
+        self.attack_settings = {}
+        
+        # SYN Flood
+        syn_cfg = cfg.get('syn_flood') or {}
+        frame = ttk.LabelFrame(scrollable_frame, text="SYN Flood Detection", padding=10)
+        frame.pack(fill="x", padx=10, pady=5)
+        
+        ttk.Label(frame, text="Time Window (seconds):").grid(row=0, column=0, sticky="w", pady=5)
+        syn_window_var = tk.DoubleVar(value=float(syn_cfg.get('window', 0.5)))
+        ttk.Entry(frame, textvariable=syn_window_var, width=10).grid(row=0, column=1, sticky="w", padx=5)
+        ttk.Label(frame, text="(Detection window in seconds)", font=("Arial", 8), foreground="gray").grid(row=0, column=2, sticky="w")
+        
+        ttk.Label(frame, text="Packet Threshold:").grid(row=1, column=0, sticky="w", pady=5)
+        syn_threshold_var = tk.IntVar(value=int(syn_cfg.get('threshold', 50)))
+        ttk.Entry(frame, textvariable=syn_threshold_var, width=10).grid(row=1, column=1, sticky="w", padx=5)
+        ttk.Label(frame, text="(TCP packets per window)", font=("Arial", 8), foreground="gray").grid(row=1, column=2, sticky="w")
+        
+        self.attack_settings["syn_flood"] = {"window": syn_window_var, "threshold": syn_threshold_var}
+
+        # UDP Flood
+        udp_cfg = cfg.get('udp_flood') or {}
+        frame = ttk.LabelFrame(scrollable_frame, text="UDP Flood Detection", padding=10)
+        frame.pack(fill="x", padx=10, pady=5)
+        
+        ttk.Label(frame, text="Time Window (seconds):").grid(row=0, column=0, sticky="w", pady=5)
+        udp_window_var = tk.DoubleVar(value=float(udp_cfg.get('window', 0.5)))
+        ttk.Entry(frame, textvariable=udp_window_var, width=10).grid(row=0, column=1, sticky="w", padx=5)
+        ttk.Label(frame, text="(Detection window in seconds)", font=("Arial", 8), foreground="gray").grid(row=0, column=2, sticky="w")
+        
+        ttk.Label(frame, text="Packet Threshold:").grid(row=1, column=0, sticky="w", pady=5)
+        udp_threshold_var = tk.IntVar(value=int(udp_cfg.get('threshold', 50)))
+        ttk.Entry(frame, textvariable=udp_threshold_var, width=10).grid(row=1, column=1, sticky="w", padx=5)
+        ttk.Label(frame, text="(UDP packets per window)", font=("Arial", 8), foreground="gray").grid(row=1, column=2, sticky="w")
+        
+        self.attack_settings["udp_flood"] = {"window": udp_window_var, "threshold": udp_threshold_var}
+
+        # Generic Rate Detection
+        simple_cfg = cfg.get('simple_rate') or {}
+        frame = ttk.LabelFrame(scrollable_frame, text="Generic Rate Detection (Fallback)", padding=10)
+        frame.pack(fill="x", padx=10, pady=5)
+        
+        ttk.Label(frame, text="Time Window (seconds):").grid(row=0, column=0, sticky="w", pady=5)
+        simple_window_var = tk.DoubleVar(value=float(simple_cfg.get('window', 0.5)))
+        ttk.Entry(frame, textvariable=simple_window_var, width=10).grid(row=0, column=1, sticky="w", padx=5)
+        ttk.Label(frame, text="(For all other protocols)", font=("Arial", 8), foreground="gray").grid(row=0, column=2, sticky="w")
+        
+        ttk.Label(frame, text="Packet Threshold:").grid(row=1, column=0, sticky="w", pady=5)
+        simple_threshold_var = tk.IntVar(value=int(simple_cfg.get('threshold', 10)))
+        ttk.Entry(frame, textvariable=simple_threshold_var, width=10).grid(row=1, column=1, sticky="w", padx=5)
+        ttk.Label(frame, text="(Packets per window)", font=("Arial", 8), foreground="gray").grid(row=1, column=2, sticky="w")
+        
+        self.attack_settings["simple_rate"] = {"window": simple_window_var, "threshold": simple_threshold_var}
+
+        # Fixed detection methods
+        frame = ttk.LabelFrame(scrollable_frame, text="Fixed Detection Methods", padding=10)
+        frame.pack(fill="x", padx=10, pady=5)
+        
+        info = """ARP Spoofing: Detected when same IP seen from different MAC
+XMAS Scan: Detected when TCP flags are FIN+PSH+URG
+NULL Scan: Detected when TCP packet has no flags set
+Port Scan: Configured via Custom Rules tab
+Large Packet: Detected when packet > 3000 bytes
+External Access: Blocked CIDR ranges (configurable in rules)
+DNS Anomaly: Detected from known DNS IPs (configurable in rules)"""
+        
+        ttk.Label(frame, text=info, font=("Arial", 8), justify="left").pack(anchor="w", padx=5, pady=5)
+
+        canvas.pack(side="left", fill="both", expand=True)
+        scrollbar.pack(side="right", fill="y")
+
+        # Button frame
+        btn_frame = ttk.Frame(self.settings_tab)
+        btn_frame.pack(fill="x", padx=10, pady=10)
+        
+        ttk.Button(btn_frame, text="💾 Save Settings", command=self.save_settings).pack(side="left", padx=5)
+        ttk.Button(btn_frame, text="🔄 Reset to Defaults", command=self.reset_settings).pack(side="left", padx=5)
+
+    # ========== RULES TAB ==========
+    def _build_rules_tab(self):
+        """Build the custom rules tab."""
+        # Header
+        header_label = tk.Label(self.rules_tab,
+                               text="📋 MANAGE CUSTOM DETECTION RULES",
+                               font=("Arial", 12, "bold"),
+                               bg="#34495e", fg="white", pady=10)
+        header_label.pack(fill=tk.X)
+        
+        info_text = ttk.Label(self.rules_tab, text="Create and manage custom packet detection rules",
+                             font=("Arial", 9), foreground="gray")
+        info_text.pack(anchor="w", padx=10, pady=5)
+
+        # Rules tree
+        self.rules_tree = ttk.Treeview(
+            self.rules_tab,
+            columns=("Name", "Field", "Operator", "Value", "Action"),
+            show="headings"
+        )
+        
+        for col, width in [("Name", 200), ("Field", 150), ("Operator", 150), ("Value", 150), ("Action", 150)]:
+            self.rules_tree.heading(col, text=col)
+            self.rules_tree.column(col, width=width, anchor="center")
+
+        self.rules_tree.pack(fill="both", expand=True, padx=10, pady=5)
+
+        # Rule management buttons
+        btn_frame = ttk.Frame(self.rules_tab)
+        btn_frame.pack(fill="x", pady=10, padx=10)
+
+        ttk.Button(btn_frame, text="➕ Add Rule", command=self._add_rule).pack(side="left", padx=5)
+        ttk.Button(btn_frame, text="✏️  Edit Rule", command=self._edit_rule).pack(side="left", padx=5)
+        ttk.Button(btn_frame, text="❌ Delete Rule", command=self._delete_rule).pack(side="left", padx=5)
+
+        self._load_rules()
+
+    # ========== STATISTICS TAB ==========
+    def _build_stats_tab(self):
+        """Build the statistics tab with graphs."""
+        # Professional header frame
+        header_frame = tk.Frame(self.stats_tab, bg="#34495e", height=80)
+        header_frame.pack(fill=tk.X, padx=0, pady=0)
+        
+        header_label = tk.Label(header_frame,
+                               text="📈 IPv4 NETWORK TRAFFIC ANALYSIS & STATISTICS",
+                               font=("Arial", 12, "bold"),
+                               bg="#34495e", fg="white", pady=10)
+        header_label.pack(fill=tk.X)
+        
+        info_label = tk.Label(header_frame,
+                             text="Real-time packet statistics and protocol distribution analysis",
+                             font=("Arial", 9), fg="#bdc3c7", bg="#34495e")
+        info_label.pack(anchor=tk.W, padx=15)
+        
+        # Stats boxes
+        stats_box = tk.Frame(self.stats_tab, bg="#ecf0f1")
+        stats_box.pack(fill=tk.X, padx=10, pady=5)
+        
+        self.packet_label = tk.Label(stats_box, text="📦 Total Packets: 0",
+                                    font=("Arial", 11, "bold"), bg="#ecf0f1")
+        self.packet_label.pack(side=tk.LEFT, padx=15)
+        
+        self.alert_label = tk.Label(stats_box, text="⚠️  Security Alerts: 0",
+                                   font=("Arial", 11, "bold"), bg="#ecf0f1", fg="#c0392b")
+        self.alert_label.pack(side=tk.LEFT, padx=15)
+        
+        self.detection_label = tk.Label(stats_box, text="🔍 Detections: 0",
+                                       font=("Arial", 11, "bold"), bg="#ecf0f1", fg="#27ae60")
+        self.detection_label.pack(side=tk.LEFT, padx=15)
+
+        # Graph
+        self.fig, self.ax = plt.subplots(figsize=(14, 6))
+        self.ax.set_title("Network Traffic Distribution - IPv4 Protocols", fontsize=12, fontweight='bold')
+        self.ax.set_ylabel("Packet Count")
+        self.ax.set_xlabel("Protocol Type")
+        self.fig.patch.set_facecolor("#ecf0f1")
+        self.canvas = FigureCanvasTkAgg(self.fig, master=self.stats_tab)
+        self.canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True, padx=10, pady=5)
+
+    # ========== BASELINE TAB ==========
+    def _build_baseline_tab(self):
+        """Build the traffic baseline tab."""
+        header_label = tk.Label(self.baseline_tab,
+                               text="📋 TRAFFIC BASELINE ANALYSIS",
+                               font=("Arial", 12, "bold"),
+                               bg="#34495e", fg="white", pady=10)
+        header_label.pack(fill=tk.X)
+        
+        self.baseline_area = scrolledtext.ScrolledText(self.baseline_tab, width=170, height=30,
+                                                       bg="#2c3e50", fg="#ecf0f1", font=("Courier", 9))
+        self.baseline_area.pack(fill=tk.BOTH, expand=True, padx=10, pady=5)
+        
+        for proto, color in self.PROTO_COLORS.items():
+            self.baseline_area.tag_config(proto, foreground=color)
+
+    # ========== ANALYTICS TAB (IPv6 ADVANCED) ==========
+    def _build_analytics_tab(self):
+        """Build the advanced analytics tab for IPv6 analysis."""
+        header_label = tk.Label(self.analytics_tab,
+                               text="🔍 ADVANCED ANALYTICS - IPv6 Attack Analysis",
+                               font=("Arial", 12, "bold"),
+                               bg="#34495e", fg="white", pady=10)
+        header_label.pack(fill=tk.X)
+        
+        # Graph for attack distribution
+        self.fig_analytics, self.ax_analytics = plt.subplots(figsize=(10, 4))
+        self.ax_analytics.set_title("Attack Distribution by Type")
+        self.ax_analytics.set_ylabel("Count")
+        self.fig_analytics.patch.set_facecolor("#ecf0f1")
+        self.canvas_analytics = FigureCanvasTkAgg(self.fig_analytics, master=self.analytics_tab)
+        self.canvas_analytics.get_tk_widget().pack(fill=tk.BOTH, expand=True, padx=10, pady=5)
+
+    # ========== HELPER METHODS ==========
+    def _update_filter(self):
+        """Update protocol filter based on checkboxes."""
+        self.filter_protocols = set()
+        for proto, var in self.protocol_vars.items():
+            if var.get():
+                self.filter_protocols.add(proto)
+
+    def _on_detection_double_click(self, event):
+        """Handle double-click on detection row to show grouped details."""
+        try:
+            selected_item = self.detections_tree.selection()[0]
+            
+            group_data = None
+            for group_key, data in self.detection_groups.items():
+                if data['item_id'] == selected_item:
+                    group_data = data
+                    break
+            
+            if not group_data:
+                messagebox.showwarning("Error", "Could not find details for this detection.")
+                return
+            
+            # Create a custom Toplevel window
+            details_window = tk.Toplevel(self.root)
+            details_window.title(f"Detection Details - {group_data['attack_type']}")
+            details_window.geometry("750x650")
+            details_window.resizable(True, True)
+            
+            main_frame = ttk.Frame(details_window, padding="15")
+            main_frame.pack(fill="both", expand=True)
+            
+            title_label = ttk.Label(main_frame, text="Grouped Detection Details",
+                                   font=("Arial", 14, "bold"))
+            title_label.pack(anchor="w", pady=(0, 15))
+            
+            text_frame = ttk.Frame(main_frame)
+            text_frame.pack(fill="both", expand=True)
+            
+            scrollbar = ttk.Scrollbar(text_frame)
+            scrollbar.pack(side="right", fill="y")
+            
+            text_widget = tk.Text(text_frame, height=28, width=90, wrap="word",
+                                 yscrollcommand=scrollbar.set, font=("Courier", 10))
+            text_widget.pack(side="left", fill="both", expand=True)
+            scrollbar.config(command=text_widget.yview)
+            
+            content = self._format_detection_details(group_data)
+            text_widget.insert("1.0", content)
+            text_widget.config(state="disabled")
+            
+            button_frame = ttk.Frame(main_frame)
+            button_frame.pack(fill="x", pady=(10, 0))
+            
+            ttk.Button(button_frame, text="Close", command=details_window.destroy).pack(side="right")
+            ttk.Button(button_frame, text="Copy Details",
+                      command=lambda: self._copy_to_clipboard(content)).pack(side="right", padx=5)
+            
+        except IndexError:
+            messagebox.showwarning("No Selection", "Please select a detection to view details.")
+    
+    def _format_detection_details(self, group_data):
+        """Format detection details for display."""
+        timestamps_str = "\n".join(f"  {i+1}. {ts}" for i, ts in enumerate(group_data['timestamps'][-20:]))
+        
+        content = f"""═══════════════════════════════════════════════════════════════════
+                      DETECTION GROUP DETAILS
+═══════════════════════════════════════════════════════════════════
+
+━━━ ATTACK INFORMATION ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Attack Type:              {group_data['attack_type']}
+Protocol:                 {group_data['protocol']}
+Source IP:                {group_data['src_ip']}
+Destination IP:           {group_data['dst_ip']}
+
+━━━ GROUPING STATISTICS ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Total Packets Grouped:    {group_data['count']}
+First Detected:           {group_data['first_time']}
+Last Detected:            {group_data['last_time']}
+
+━━━ RECENT DETECTION TIMESTAMPS (Last {len(group_data['timestamps'])} Events) ━━━
+{timestamps_str}
+
+━━━ ATTACK MESSAGE ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+{group_data['finding'].get('message', 'No details available')}
+
+━━━ ADDITIONAL INFORMATION ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Action:                   {group_data.get('action', 'ALERT').upper() if group_data.get('action') else 'ALERT'}
+
+═══════════════════════════════════════════════════════════════════"""
+        return content
+    
+    def _copy_to_clipboard(self, text):
+        """Copy text to clipboard."""
+        try:
+            self.root.clipboard_clear()
+            self.root.clipboard_append(text)
+            messagebox.showinfo("Success", "Details copied to clipboard!")
+        except Exception as e:
+            messagebox.showerror("Error", f"Failed to copy to clipboard: {e}")
+
+    def _on_delete_key(self, event):
+        """Handle Delete key press on detection tree."""
+        self._delete_detection()
+
+    def _delete_detection(self):
+        """Delete selected detection(s) from the tree."""
+        selected_items = self.detections_tree.selection()
+        if not selected_items:
+            messagebox.showwarning("No Selection", "Please select a detection to delete.")
+            return
+        
+        for item in selected_items:
+            for group_key, group_data in list(self.detection_groups.items()):
+                if group_data['item_id'] == item:
+                    del self.detection_groups[group_key]
+                    break
+            
+            self.detections_tree.delete(item)
+
+    def _clear_all_detections(self):
+        """Clear all detections from the tree."""
+        if messagebox.askyesno("Clear All", "Are you sure you want to clear all detections?"):
+            self.detection_groups.clear()
+            for item in self.detections_tree.get_children():
+                self.detections_tree.delete(item)
+
+    def _filter_ipv4_detections(self):
+        """Filter IPv4 detections by attack type."""
+        selected_filter = self.ipv4_attack_filter.get()
+        
+        # Clear current view
+        for item in self.detections_tree.get_children():
+            self.detections_tree.delete(item)
+        
+        # Re-display filtered detections
+        for group_key, group_data in self.detection_groups.items():
+            attack_type = group_data.get('attack_type', 'Unknown')
+            
+            # If filter is "All" or exactly matches the attack type, display it
+            if selected_filter == "All" or selected_filter.lower() == attack_type.lower():
+                # Format with ports if available
+                src_port = group_data.get('src_port')
+                dst_port = group_data.get('dst_port')
+                src_display = f"{group_data['src_ip']}:{src_port}" if src_port else group_data['src_ip']
+                dst_display = f"{group_data['dst_ip']}:{dst_port}" if dst_port else group_data['dst_ip']
+                
+                self.detections_tree.insert("", "end", iid=group_data['item_id'], values=(
+                    group_data['first_time'],
+                    group_data['attack_type'],
+                    group_data['protocol'],
+                    self._get_severity(group_data['attack_type'], group_data.get('count', 1)),
+                    src_display,
+                    dst_display,
+                    f"[{group_data['count']}x]",
+                    group_data.get('message', 'N/A')
+                ))
+
+    def _get_severity(self, attack_type, count=1):
+        """Determine severity level based on attack type AND detection count/volume.
+        
+        Args:
+            attack_type: Name of the attack (e.g., "Syn Flood", "Port Scan")
+            count: Number of times this attack has been detected (default 1)
+        
+        Returns:
+            Severity indicator with emoji
+        """
+        attack_type_lower = attack_type.lower()
+        
+        # CRITICAL: High-volume DDoS/flooding attacks (volume matters!)
+        if 'flood' in attack_type_lower:
+            if count >= 10:  # 10+ detections = sustained attack
+                return "🔴 CRITICAL"
+            elif count >= 5:  # 5-9 = active attack
+                return "🟠 HIGH"
+            else:  # 1-4 = isolated incident
+                return "🟡 MEDIUM"
+        
+        # HIGH: Reconnaissance/probing attacks (dangerous if sustained)
+        elif 'scan' in attack_type_lower:
+            if count >= 5:  # Multiple scans = reconnaissance campaign
+                return "🟠 HIGH"
+            else:
+                return "🟡 MEDIUM"
+        
+        # HIGH: Spoofing/anomalies (always suspicious)
+        elif any(x in attack_type_lower for x in ['spoof', 'anomaly']):
+            return "🟠 HIGH"
+        
+        # MEDIUM: Access violations or malformed packets
+        elif any(x in attack_type_lower for x in ['access', 'malformed', 'unusual']):
+            return "🟡 MEDIUM"
+        
+        # LOW: Unknown or low-risk
+        else:
+            return "🟢 LOW"
+
+    def _clear_alerts(self):
+        """Clear all alerts from the alert area."""
+        if messagebox.askyesno("Clear Alerts", "Are you sure you want to clear all alerts?"):
+            self.alert_area.config(state="normal")
+            self.alert_area.delete("1.0", tk.END)
+            self.alert_area.config(state="disabled")
+
+    def _export_alerts(self):
+        """Export alerts to file."""
+        try:
+            from tkinter import filedialog
+            filename = filedialog.asksaveasfilename(
+                defaultextension=".txt",
+                filetypes=[("Text files", "*.txt"), ("All files", "*.*")]
+            )
+            if filename:
+                with open(filename, 'w') as f:
+                    f.write(self.alert_area.get("1.0", tk.END))
+                messagebox.showinfo("Success", f"Alerts exported to {filename}")
+        except Exception as e:
+            messagebox.showerror("Error", f"Failed to export alerts: {e}")
+
+    def _on_detector_checkbox_changed(self, attack_name):
+        """Callback when a detector checkbox is changed."""
+        detector_class_name = self.detector_name_map.get(attack_name)
+        if not detector_class_name:
+            return
+        
+        is_enabled = self.attack_scanners[attack_name].get()
+        self.detection_engine.set_detector_enabled(detector_class_name, is_enabled)
+        status = "enabled" if is_enabled else "disabled"
+        self.packet_list.insert("end", f"[INFO] Detector '{attack_name}' {status}\n")
+        self.packet_list.yview_moveto(1)
+        logger.debug("Detector %s set to %s", detector_class_name, status)
+
+    def start_capture(self):
+        """Start packet capture on selected interface (shared for IPv4 and IPv6)."""
+        if self.is_listening:
+            show_error("Error", "Capture is already running.")
+            return
+        
+        selected_iface = self.iface_var.get()
+        if not selected_iface:
+            show_error("Error", "No interface selected.")
+            return
+
+        self.is_listening = True
+        
+        # Use different filter for loopback vs regular interfaces
+        if selected_iface.lower() in ['lo', 'lo0', 'localhost']:
+            # Loopback interface - capture all IP traffic
+            bpf_filter = None  # No filter for loopback to capture all
+        else:
+            # Regular interfaces - use IP filter
+            bpf_filter = "ip or arp"
+        
+        self.listener = LiveListener(interface=selected_iface, filter_exp=bpf_filter)
+
+        def gui_callback(packet):
+            if self.is_listening:
+                self.root.after(0, self._process_packet, packet)
+
+        # Start listener in daemon thread
+        self.capture_thread = threading.Thread(
+            target=self.listener.listen, 
+            args=(gui_callback,), 
+            daemon=True
+        )
+        self.capture_thread.start()
+        self.packet_list.insert("end", f"[INFO] Capture started on {selected_iface}\n")
+        self.ipv6_packet_list.insert("end", f"[INFO] Capture started on {selected_iface}\n")
+
+    def pause_capture(self):
+        """Pause packet capture (affects both IPv4 and IPv6)."""
+        self.is_paused = True
+        try:
+            if self.packet_list.winfo_exists():
+                self.packet_list.insert("end", "[INFO] Capture paused.\n")
+        except Exception:
+            pass
+        try:
+            if self.ipv6_packet_list.winfo_exists():
+                self.ipv6_packet_list.insert("end", "[INFO] Capture paused.\n")
+        except Exception:
+            pass
+
+    def resume_capture(self):
+        """Resume packet capture (affects both IPv4 and IPv6)."""
+        self.is_paused = False
+        try:
+            if self.packet_list.winfo_exists():
+                self.packet_list.insert("end", "[INFO] Capture resumed.\n")
+        except Exception:
+            pass
+        try:
+            if self.ipv6_packet_list.winfo_exists():
+                self.ipv6_packet_list.insert("end", "[INFO] Capture resumed.\n")
+        except Exception:
+            pass
+
+    def _process_packet(self, packet):
+        """Process and display a captured packet."""
+        try:
+            if self.is_paused:
+                return
+            
+            # Update traffic analyzer (for IPv6)
+            self.analyzer.analyze_packet(packet)
+            
+            # Build packet summary with ports if available
+            src_port = packet.get('src_port')
+            dst_port = packet.get('dst_port')
+            
+            if src_port and dst_port:
+                # TCP/UDP with ports
+                packet_summary = (
+                    f"{packet['timestamp']} | {packet['src_ip']}:{src_port} -> {packet['dst_ip']}:{dst_port} | "
+                    f"{packet['protocol']} | {packet['length']} bytes"
+                )
+            else:
+                # Other protocols without ports
+                packet_summary = (
+                    f"{packet['timestamp']} | {packet['src_ip']} -> {packet['dst_ip']} | "
+                    f"{packet['protocol']} | {packet['length']} bytes"
+                )
+            
+            # Check if this protocol should be displayed based on filter checkboxes
+            protocol = packet['protocol'].lower()
+            if protocol not in self.filter_protocols:
+                # Protocol is filtered out, skip display
+                pass
+            else:
+                # Display in both IPv4 and IPv6 capture tabs (with widget existence check)
+                try:
+                    if self.packet_list.winfo_exists():
+                        self.packet_list.insert("end", packet_summary + "\n")
+                        self.packet_list.yview_moveto(1)
+                except Exception:
+                    pass
+                try:
+                    if self.ipv6_packet_list.winfo_exists():
+                        self.ipv6_packet_list.insert("end", packet_summary + "\n")
+                        self.ipv6_packet_list.yview_moveto(1)
+                except Exception:
+                    pass
+
+            # Apply IPv4 rules
+            packet_after_rules = self.detection_engine._apply_rules_to_packet(packet)
+            
+            if packet_after_rules is not None and "rule_findings" in packet_after_rules:
+                for finding in packet_after_rules["rule_findings"]:
+                    self._display_finding(finding)
+            
+            if packet_after_rules is None:
+                self.packet_list.insert("end", "  [DROPPED] Packet filtered by rule\n")
+                self.packet_list.yview_moveto(1)
+                return
+
+            # Analyze with IPv4 detectors
+            findings = self.detection_engine.analyze(packet_after_rules)
+            for finding in findings:
+                self._display_finding(finding)
+            
+            # Analyze with IPv6 detector
+            self._analyze_ipv6_packet(packet)
+            
+            # Update statistics
+            self.packet_count += 1
+            protocol = packet.get("protocol", "unknown").upper()
+            self.protocol_counts[protocol] += 1
+            self.packet_label.config(text=f"📦 Total Packets: {self.packet_count}")
+            
+        except Exception as e:
+            logger.exception("Error processing packet: %s", e)
+
+    def _analyze_ipv6_packet(self, packet):
+        """Analyze packet with IPv6 detector for advanced threats."""
+        try:
+            proto = packet.get("protocol", "unknown").lower()
+            if proto not in self.filter_protocols:
+                return
+            
+            pkt_info = {
+                "protocol": proto,
+                "src": packet.get("src_ip"),
+                "dst": packet.get("dst_ip"),
+                "flags": packet.get("flags", ""),
+                "port": packet.get("dport", packet.get("sport"))
+            }
+            
+            self.ipv6_detector.analyze_packet(pkt_info)
+            alerts = list(self.ipv6_detector.get_alerts())
+            
+            if alerts:
+                for alert in alerts:
+                    raw_name = alert.get("attack", "Unknown")
+                    normalized = self._normalize_attack_name(raw_name)
+                    self.attack_counts[normalized] += 1
+                    
+                    src_ip = pkt_info.get('src')
+                    if src_ip:
+                        self.attacker_ips[src_ip] += 1
+                    
+                    description = alert.get("description", "")
+                    
+                    timestamp = datetime.now().strftime("%H:%M:%S.%f")[:-3]
+                    
+                    attack_msg = f"\n{'='*100}\n"
+                    attack_msg += f"⚠️  SECURITY ALERT (IPv6) - {timestamp}\n"
+                    attack_msg += f"{'='*100}\n"
+                    attack_msg += f"Attack Type:    {raw_name}\n"
+                    attack_msg += f"Severity:       {'🔴 CRITICAL' if 'FLOOD' in raw_name.upper() else '🟠 HIGH'}\n"
+                    attack_msg += f"Source IP:      {pkt_info.get('src', 'N/A')}\n"
+                    attack_msg += f"Destination IP: {pkt_info.get('dst', 'N/A')}\n"
+                    attack_msg += f"Protocol:       {proto.upper()}\n"
+                    if pkt_info.get('port'):
+                        attack_msg += f"Port:           {pkt_info.get('port')}\n"
+                    attack_msg += f"\nTechnical Details:\n"
+                    attack_msg += f"  • {description}\n"
+                    
+                    if normalized in self.ATTACK_DESCRIPTIONS:
+                        attack_msg += f"\nSecurity Analysis:\n"
+                        attack_msg += f"  • {self.ATTACK_DESCRIPTIONS[normalized]}\n"
+                    
+                    attack_msg += f"{'='*100}\n"
+                    
+                    self.alert_area.config(state="normal")
+                    self.alert_area.insert(tk.END, attack_msg, "alert")
+                    self.alert_area.see(tk.END)
+                    self.alert_area.config(state="disabled")
+                    
+                    self.alert_count += 1
+                    self.alert_label.config(text=f"⚠️  Security Alerts: {self.alert_count}")
+                    
+                    self._update_analytics_graph()
+                
+                self.ipv6_detector.alerts.clear()
+        except Exception as e:
+            logger.exception("Error analyzing IPv6 packet: %s", e)
+
+    def _normalize_attack_name(self, raw):
+        """Normalize attack name."""
+        if not raw:
+            return "Unknown"
+        r = raw.upper()
+        if "SYN SCAN" in r:
+            return "SYN Scan"
+        if "SYN FLOOD" in r:
+            return "SYN Flood"
+        if "XMAS" in r:
+            return "XMAS Scan"
+        if "NULL" in r:
+            return "NULL Scan"
+        if "UDP FLOOD" in r:
+            return "UDP Flood"
+        if "ICMP ECHO" in r or "ICMP FLOOD" in r:
+            return "ICMP Flood"
+        if "ARP FLOOD" in r:
+            return "ARP Flood"
+        if "ARP SPOOF" in r:
+            return "ARP Spoofing"
+        if "DNS FLOOD" in r:
+            return "DNS Flood"
+        return raw.title()
+
+    def _update_analytics_graph(self):
+        """Update the analytics graph with attack statistics."""
+        self.ax_analytics.clear()
+        self.ax_analytics.set_title("Attack Distribution by Type")
+        self.ax_analytics.set_ylabel("Count")
+        self.ax_analytics.set_xlabel("Attack Type")
+        
+        types_ = list(self.attack_counts.keys())
+        counts_ = [self.attack_counts[t] for t in types_]
+        colors = [self.ATTACK_COLORS.get(t, "grey") for t in types_]
+        
+        if types_:
+            self.ax_analytics.bar(types_, counts_, color=colors)
+            self.ax_analytics.tick_params(axis='x', rotation=45)
+        else:
+            self.ax_analytics.text(0.5, 0.5, "No attacks detected yet",
+                                  horizontalalignment='center', verticalalignment='center',
+                                  transform=self.ax_analytics.transAxes, fontsize=12, color='gray')
+        
+        self.fig_analytics.tight_layout()
+        self.canvas_analytics.draw()
+
+    def _update_stats_graph(self):
+        """Update the IPv4 statistics graph with detected threats by protocol."""
+        if not hasattr(self, 'ax'):
+            return
+            
+        self.ax.clear()
+        self.ax.set_title("Detected Threats by Protocol - IPv4", fontsize=12, fontweight='bold')
+        self.ax.set_ylabel("Detection Count")
+        self.ax.set_xlabel("Protocol Type")
+        
+        # Use alerted_protocols instead of all protocol_counts
+        protocols = list(self.alerted_protocols.keys())
+        counts = [self.alerted_protocols[p] for p in protocols]
+        colors = [self.PROTO_COLORS.get(p, "grey") for p in protocols]
+        
+        if protocols and sum(counts) > 0:
+            self.ax.bar(protocols, counts, color=colors)
+            self.ax.tick_params(axis='x', rotation=45)
+        else:
+            self.ax.text(0.5, 0.5, "No threats detected yet",
+                        horizontalalignment='center', verticalalignment='center',
+                        transform=self.ax.transAxes, fontsize=12, color='gray')
+        
+        self.fig.tight_layout()
+        self.canvas.draw()
+
+    def _get_group_key(self, finding):
+        """Generate a group key for detection grouping."""
+        attack_type = finding.get('attack_type', finding.get('type', 'Unknown'))
+        protocol = finding.get('protocol', 'Unknown')
+        src_ip = finding.get('src_ip', 'Unknown')
+        dst_ip = finding.get('dst_ip', 'Unknown')
+        return f"{attack_type}|{protocol}|{src_ip}|{dst_ip}"
+
+    def _display_finding(self, finding):
+        """Display a detection finding in the detections tree with grouping."""
+        try:
+            time = finding.get('time', datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
+            finding_type = finding.get('attack_type', finding.get('type', 'Unknown')).replace('_', ' ').title()
+            protocol = finding.get('protocol', 'Unknown Protocol')
+            src_ip = finding.get('src_ip', 'Unknown Source')
+            dst_ip = finding.get('dst_ip', 'Unknown Destination')
+            src_port = finding.get('src_port')
+            dst_port = finding.get('dst_port')
+            message = finding.get('message', 'No details available')
+            action = finding.get('action', None)
+            
+            # Check if finding matches current filter
+            current_filter = self.ipv4_attack_filter.get()
+            if current_filter != "All" and current_filter.lower() != finding_type.lower():
+                # Finding doesn't match filter, don't display but still store it
+                pass
+            
+            # Format addresses with ports if available
+            src_display = f"{src_ip}:{src_port}" if src_port else src_ip
+            dst_display = f"{dst_ip}:{dst_port}" if dst_port else dst_ip
+
+            group_key = self._get_group_key(finding)
+            row_color = get_finding_color(action)
+
+            if group_key in self.detection_groups:
+                group_data = self.detection_groups[group_key]
+                group_data['count'] += 1
+                group_data['last_time'] = time
+                group_data['timestamps'].append(time)
+                
+                if len(group_data['timestamps']) > 50:
+                    group_data['timestamps'] = group_data['timestamps'][-50:]
+                
+                item_id = group_data['item_id']
+                count_text = f"[{group_data['count']}x]"
+                # Recalculate severity based on NEW count
+                severity = self._get_severity(finding_type, group_data['count'])
+                
+                # Only update tree if matching current filter
+                if current_filter == "All" or current_filter.lower() == finding_type.lower():
+                    self.detections_tree.item(item_id, values=(
+                        group_data['first_time'],
+                        finding_type,
+                        protocol,
+                        severity,
+                        src_display,
+                        dst_display,
+                        count_text,
+                        f"{message} (Last: {time})"
+                    ))
+            else:
+                # First occurrence - severity is LOW since count=1
+                severity = self._get_severity(finding_type, 1)
+                
+                # Only add to tree if matching current filter
+                should_display = current_filter == "All" or current_filter.lower() == finding_type.lower()
+                
+                if should_display:
+                    item_id = self.detections_tree.insert("", "end", values=(
+                        time, finding_type, protocol, severity, src_display, dst_display, "[1x]", message
+                    ))
+                else:
+                    item_id = None
+                
+                self.detection_groups[group_key] = {
+                    'first_time': time,
+                    'last_time': time,
+                    'attack_type': finding_type,
+                    'protocol': protocol,
+                    'src_ip': src_ip,
+                    'dst_ip': dst_ip,
+                    'src_port': src_port,
+                    'dst_port': dst_port,
+                    'count': 1,
+                    'timestamps': [time],
+                    'item_id': item_id,
+                    'action': action,
+                    'finding': finding,
+                    'message': message,
+                }
+
+            apply_row_color(self.detections_tree, item_id, row_color)
+            
+            # Update detection count and statistics
+            detection_count = len(self.detection_groups)
+            self.detection_label.config(text=f"🔍 Detections: {detection_count}")
+            
+            # Track threats by attack TYPE, not protocol
+            # This way DNS anomaly counts as "DNS Anomaly", not "UDP"
+            raw_attack_type = finding.get('attack_type', finding.get('type', 'Unknown'))
+            attack_type = finding_type  # Use the formatted version to match display
+            print(f"DEBUG: Finding attack_type={raw_attack_type}, formatted={finding_type}, tracking as={attack_type}")
+            self.alerted_protocols[attack_type] += 1
+            
+            self._update_stats_graph()
+            
+        except Exception as e:
+            logger.exception("Error displaying finding: %s", e)
+
+    def stop_capture(self):
+        """Stop packet capture (for both IPv4 and IPv6)."""
+        if self.listener and self.is_listening:
+            self.is_listening = False
+            self.listener.stop()
+            self.packet_list.insert("end", "[INFO] Capture stopped.\n")
+            self.ipv6_packet_list.insert("end", "[INFO] Capture stopped.\n")
+
+    def save_settings(self):
+        """Save settings to configuration file."""
+        try:
+            from ids.utils import config as cfg
+            
+            try:
+                syn_window = float(self.attack_settings["syn_flood"]["window"].get())
+                syn_threshold = int(self.attack_settings["syn_flood"]["threshold"].get())
+                
+                udp_window = float(self.attack_settings["udp_flood"]["window"].get())
+                udp_threshold = int(self.attack_settings["udp_flood"]["threshold"].get())
+                
+                simple_window = float(self.attack_settings["simple_rate"]["window"].get())
+                simple_threshold = int(self.attack_settings["simple_rate"]["threshold"].get())
+                
+                if syn_window <= 0 or syn_threshold <= 0:
+                    show_error("Invalid Input", "SYN Flood: Window and threshold must be > 0")
+                    return
+                if udp_window <= 0 or udp_threshold <= 0:
+                    show_error("Invalid Input", "UDP Flood: Window and threshold must be > 0")
+                    return
+                if simple_window <= 0 or simple_threshold <= 0:
+                    show_error("Invalid Input", "Generic Rate: Window and threshold must be > 0")
+                    return
+                    
+            except ValueError:
+                show_error("Invalid Input", "Please enter valid numbers for all fields")
+                return
+            
+            cfg.set_section("syn_flood", {"window": syn_window, "threshold": syn_threshold})
+            cfg.set_section("udp_flood", {"window": udp_window, "threshold": udp_threshold})
+            cfg.set_section("simple_rate", {"window": simple_window, "threshold": simple_threshold})
+            cfg.save()
+            
+            show_info("Success", "Settings saved successfully!\nDetectors will use new values immediately.")
+            logger.info("Settings updated")
+        except Exception as e:
+            show_error("Error", f"Failed to save settings: {e}")
+            logger.exception("Error saving settings")
+
+    def reset_settings(self):
+        """Reset settings to default values."""
+        if messagebox.askyesno("Reset to Defaults", "Are you sure you want to reset all settings to defaults?"):
+            try:
+                from ids.utils import config as cfg
+                
+                cfg.set_section("syn_flood", {"window": 0.5, "threshold": 10})
+                cfg.set_section("udp_flood", {"window": 0.5, "threshold": 10})
+                cfg.set_section("simple_rate", {"window": 0.5, "threshold": 10})
+                cfg.save()
+                
+                self._build_settings_tab()
+                show_info("Reset Complete", "Settings have been reset to defaults.")
+                logger.info("Settings reset to defaults")
+            except Exception as e:
+                show_error("Error", f"Failed to reset settings: {e}")
+                logger.exception("Error resetting settings")
+
+    def refresh_interfaces(self):
+        """Refresh list of available network interfaces for IPv4."""
+        try:
+            import socket
+            interfaces = [name for _idx, name in socket.if_nameindex()]
+        except Exception as e:
+            logger.error("Error fetching interfaces: %s", e)
+            interfaces = ['lo']
+
+        if not interfaces:
+            interfaces = ['lo']
+
+        self.iface_combo['values'] = interfaces
+        current_iface = self.iface_var.get()
+        if current_iface not in interfaces:
+            self.iface_var.set('lo' if 'lo' in interfaces else interfaces[0])
+    
+    def _populate_ipv6_interfaces(self):
+        """Populate IPv6 interface dropdown with available network interfaces."""
+        try:
+            import socket
+            interfaces = [name for _idx, name in socket.if_nameindex()]
+        except Exception as e:
+            logger.error("Error fetching IPv6 interfaces: %s", e)
+            interfaces = ['lo']
+
+        if not interfaces:
+            interfaces = ['lo']
+
+        self.ipv6_iface_combo['values'] = interfaces
+        current_iface = self.ipv6_iface_var.get()
+        if current_iface not in interfaces:
+            self.ipv6_iface_var.set('lo' if 'lo' in interfaces else interfaces[0])
+
+    def _add_rule(self):
+        """Open dialog to add a new rule."""
+        self._show_rule_dialog(None, "Add Rule")
+
+    def _edit_rule(self):
+        """Open dialog to edit selected rule."""
+        selected_item = self.rules_tree.selection()
+        if not selected_item:
+            show_error("Error", "No rule selected.")
+            return
+
+        item = self.rules_tree.item(selected_item)
+        values = item["values"]
+        self._show_rule_dialog(values, "Edit Rule")
+
+    def _delete_rule(self):
+        """Delete the selected rule."""
+        selected_item = self.rules_tree.selection()
+        if not selected_item:
+            show_error("Error", "No rule selected.")
+            return
+
+        self.rules_tree.delete(selected_item)
+        self._on_rule_change()
+
+    def _show_rule_dialog(self, rule_values, title):
+        """Show rule creation/editing dialog."""
+        rule_window = tk.Toplevel(self.root)
+        rule_window.title(title)
+
+        fields = [
+            ("Rule Name:", "name"),
+            ("Field:", "field"),
+            ("Operator:", "operator"),
+            ("Value:", "value"),
+            ("Action:", "action")
+        ]
+
+        vars_dict = {}
+
+        for i, (label_text, var_name) in enumerate(fields):
+            ttk.Label(rule_window, text=label_text).grid(row=i, column=0, sticky="w", padx=5, pady=5)
+
+            var = tk.StringVar()
+            if rule_values:
+                var.set(rule_values[i])
+
+            if var_name == "field":
+                combo = ttk.Combobox(rule_window, textvariable=var, state="readonly")
+                combo["values"] = AVAILABLE_FIELDS
+                combo.grid(row=i, column=1, sticky="we", padx=5, pady=5)
+            elif var_name == "operator":
+                combo = ttk.Combobox(rule_window, textvariable=var, state="readonly")
+                combo["values"] = AVAILABLE_OPERATORS
+                combo.grid(row=i, column=1, sticky="we", padx=5, pady=5)
+            elif var_name == "action":
+                combo = ttk.Combobox(rule_window, textvariable=var, state="readonly")
+                combo["values"] = AVAILABLE_ACTIONS
+                combo.grid(row=i, column=1, sticky="we", padx=5, pady=5)
+            else:
+                ttk.Entry(rule_window, textvariable=var).grid(row=i, column=1, sticky="we", padx=5, pady=5)
+
+            vars_dict[var_name] = var
+
+        def save_rule():
+            rule = {
+                "name": vars_dict["name"].get(),
+                "field": vars_dict["field"].get(),
+                "operator": vars_dict["operator"].get(),
+                "value": vars_dict["value"].get(),
+                "action": vars_dict["action"].get()
+            }
+
+            is_valid, error_msg = validate_rule(rule)
+            if not is_valid:
+                show_error("Error", error_msg)
+                return
+
+            if rule_values:
+                selected = self.rules_tree.selection()[0]
+                self.rules_tree.item(selected, values=(
+                    rule["name"], rule["field"], rule["operator"], rule["value"], rule["action"]
+                ))
+            else:
+                self.rules_tree.insert("", "end", values=(
+                    rule["name"], rule["field"], rule["operator"], rule["value"], rule["action"]
+                ))
+
+            self._on_rule_change()
+            rule_window.destroy()
+
+        ttk.Button(rule_window, text="Save", command=save_rule).grid(row=len(fields), column=0, columnspan=2, pady=10)
+
+    def _load_rules(self):
+        """Load rules from file and populate tree."""
+        try:
+            rules = load_rules_from_file()
+            for rule in rules:
+                self.rules_tree.insert("", "end", values=(
+                    rule.get("name", ""),
+                    rule.get("field", ""),
+                    rule.get("operator", ""),
+                    rule.get("value", ""),
+                    rule.get("action", "")
+                ))
+        except FileNotFoundError:
+            logger.warning("rules.json not found")
+        except Exception as e:
+            logger.error("Failed to load rules: %s", e)
+
+    def _on_rule_change(self):
+        """Save rules and reload in detection engine."""
+        rules = []
+        for item in self.rules_tree.get_children():
+            values = self.rules_tree.item(item, "values")
+            rules.append({
+                "name": values[0],
+                "field": values[1],
+                "operator": values[2],
+                "value": values[3],
+                "action": values[4]
+            })
+
+        if save_rules_to_file(rules):
+            self.detection_engine.reload_rules()
+
+    # ========== IPv6 CAPTURE TAB ==========
+    def _build_ipv6_detections_tab(self):
+        """Build the IPv6 detections display tab."""
+        # Professional header
+        alert_header = tk.Label(self.ipv6_detections_tab,
+                               text="🛡️  IPv6 DETECTIONS - ADVANCED THREAT ANALYSIS",
+                               font=("Arial", 12, "bold"),
+                               bg="#e74c3c", fg="white", pady=10)
+        alert_header.pack(fill=tk.X)
+        
+        info_text = tk.Label(self.ipv6_detections_tab,
+                            text="IPv6-specific threat detection: Behavioral analysis, anomalies, and advanced attacks",
+                            font=("Arial", 9), fg="#7f8c8d", bg="#ecf0f1")
+        info_text.pack(anchor=tk.W, padx=15, pady=5)
+
+        # Header with controls
+        header_frame = ttk.Frame(self.ipv6_detections_tab)
+        header_frame.pack(fill="x", padx=10, pady=5)
+        
+        ttk.Label(header_frame, text="IPv6 Detections:", font=("Arial", 11, "bold")).pack(side="left", anchor="w")
+        
+        ttk.Button(header_frame, text="🗑️  Delete", width=12, command=self._delete_ipv6_detection).pack(side="right", padx=5)
+        ttk.Button(header_frame, text="Clear All", width=12, command=self._clear_all_ipv6_detections).pack(side="right", padx=2)
+
+        # Detection tree
+        columns = ("Time", "Type", "Source IP", "Destination IP", "Severity", "Details")
+        column_definitions = [
+            ("Time", 150, "Time"),
+            ("Type", 150, "Threat Type"),
+            ("Source IP", 200, "Source IP"),
+            ("Destination IP", 200, "Destination IP"),
+            ("Severity", 100, "Severity"),
+            ("Details", 400, "Details")
+        ]
+
+        self.ipv6_detections_tree, scrollbar = create_treeview_with_scrollbar(
+            self.ipv6_detections_tab, columns, column_definitions
+        )
+        
+        self.ipv6_detections_tree.pack(fill="both", expand=True, padx=10, pady=5)
+
+    def _build_ipv6_alerts_tab(self):
+        """Build the IPv6 alerts tab."""
+        # Professional header
+        alerts_header = tk.Label(self.ipv6_alerts_tab,
+                                text="⚠️  IPv6 SECURITY ALERTS & NOTIFICATIONS",
+                                font=("Arial", 12, "bold"),
+                                bg="#c0392b", fg="white", pady=10)
+        alerts_header.pack(fill=tk.X)
+        
+        info_text = tk.Label(self.ipv6_alerts_tab,
+                            text="Real-time IPv6 security alerts with severity levels and recommended actions",
+                            font=("Arial", 9), fg="#7f8c8d", bg="#ecf0f1")
+        info_text.pack(anchor=tk.W, padx=15, pady=5)
+
+        # Header with controls
+        header_frame = ttk.Frame(self.ipv6_alerts_tab)
+        header_frame.pack(fill="x", padx=10, pady=5)
+        
+        ttk.Label(header_frame, text="IPv6 Alerts:", font=("Arial", 11, "bold")).pack(side="left", anchor="w")
+        
+        ttk.Button(header_frame, text="🗑️  Delete", width=12).pack(side="right", padx=5)
+        ttk.Button(header_frame, text="Clear All", width=12).pack(side="right", padx=2)
+
+        # Alerts tree
+        columns = ("Time", "Severity", "Alert Type", "Source", "Details")
+        column_definitions = [
+            ("Time", 150, "Time"),
+            ("Severity", 100, "Severity"),
+            ("Alert Type", 150, "Alert Type"),
+            ("Source", 200, "Source IP"),
+            ("Details", 400, "Details")
+        ]
+
+        self.ipv6_alerts_tree, scrollbar = create_treeview_with_scrollbar(
+            self.ipv6_alerts_tab, columns, column_definitions
+        )
+        
+        self.ipv6_alerts_tree.pack(fill="both", expand=True, padx=10, pady=5)
+
+    def _build_ipv6_settings_tab(self):
+        """Build the IPv6 settings tab with consistent layout."""
+        # Professional header frame
+        header_frame = tk.Frame(self.ipv6_settings_tab, bg="#34495e", height=80)
+        header_frame.pack(fill=tk.X, padx=0, pady=0)
+        
+        header_label = tk.Label(header_frame,
+                               text="⚙️  IPv6 DETECTION CONFIGURATION",
+                               font=("Arial", 12, "bold"),
+                               bg="#34495e", fg="white", pady=10)
+        header_label.pack(fill=tk.X)
+        
+        info_label = tk.Label(header_frame,
+                             text="Configure advanced IPv6 threat detection and behavioral analysis options",
+                             font=("Arial", 9), fg="#bdc3c7", bg="#34495e")
+        info_label.pack(anchor=tk.W, padx=15)
+        
+        # Scrollable frame for settings
+        canvas = tk.Canvas(self.ipv6_settings_tab, bg="#ecf0f1")
+        scrollbar = ttk.Scrollbar(self.ipv6_settings_tab, orient="vertical", command=canvas.yview)
+        settings_frame = ttk.Frame(canvas)
+        
+        settings_frame.bind("<Configure>", lambda e: canvas.configure(scrollregion=canvas.bbox("all")))
+        canvas.create_window((0, 0), window=settings_frame, anchor="nw")
+        canvas.configure(yscrollcommand=scrollbar.set)
+        canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+        
+        # Behavior detection settings
+        frame = ttk.LabelFrame(settings_frame, text="Behavioral Analysis", padding=10)
+        frame.pack(fill="x", padx=10, pady=5)
+        
+        ttk.Checkbutton(frame, text="Enable packet pattern analysis").pack(anchor="w", padx=20, pady=3)
+        ttk.Checkbutton(frame, text="Enable traffic baseline comparison").pack(anchor="w", padx=20, pady=3)
+        ttk.Checkbutton(frame, text="Enable anomaly detection").pack(anchor="w", padx=20, pady=3)
+        
+        # Advanced options
+        frame = ttk.LabelFrame(settings_frame, text="Advanced Options", padding=10)
+        frame.pack(fill="x", padx=10, pady=5)
+        
+        ttk.Checkbutton(frame, text="Log all IPv6 packets").pack(anchor="w", padx=20, pady=3)
+        ttk.Checkbutton(frame, text="Alert on protocol anomalies").pack(anchor="w", padx=20, pady=3)
+        ttk.Checkbutton(frame, text="Enable deep packet inspection").pack(anchor="w", padx=20, pady=3)
+
+    def _delete_ipv6_detection(self):
+        """Delete selected IPv6 detection."""
+        selected = self.ipv6_detections_tree.selection()
+        for item in selected:
+            self.ipv6_detections_tree.delete(item)
+
+    def _clear_all_ipv6_detections(self):
+        """Clear all IPv6 detections."""
+        for item in self.ipv6_detections_tree.get_children():
+            self.ipv6_detections_tree.delete(item)
+    
+    def _on_window_close(self):
+        """Handle window close event - cleanup and exit properly."""
+        try:
+            # Stop capture
+            self.stop_capture()
+            # Wait briefly for thread to finish
+            import time
+            time.sleep(0.5)
+        except Exception as e:
+            logger.error(f"Error during cleanup: {e}")
+        finally:
+            # Destroy window and exit
+            try:
+                self.root.quit()
+            except Exception:
+                pass
+            import sys
+            sys.exit(0)
+
+
+def run():
+    """Launch the IDS GUI application."""
+    try:
+        root = tk.Tk()
+        gui = UnifiedCaptureGUI(root)
+
+        def _handle_sigint(signum, frame):
+            try:
+                gui._on_window_close()
+            except Exception:
+                pass
+
+        signal.signal(signal.SIGINT, _handle_sigint)
+        root.mainloop()
+    except KeyboardInterrupt:
+        pass
+    except Exception as e:
+        logger.error(f"GUI Error: {e}")
+        import traceback
+        traceback.print_exc()
+
+
+if __name__ == '__main__':
+    run()

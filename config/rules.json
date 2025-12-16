@@ -1,0 +1,149 @@
+[
+    {
+        "name": "TCP SYN Flood Detection",
+        "field": "",
+        "operator": "",
+        "value": "",
+        "action": "alert"
+    },
+    {
+        "name": "TCP NULL Scan Detection",
+        "field": "",
+        "operator": "",
+        "value": "",
+        "action": "alert"
+    },
+    {
+        "name": "TCP XMAS Scan Detection",
+        "field": "Protocol",
+        "operator": "equals",
+        "value": "TCP",
+        "action": "Alert"
+    },
+    {
+        "name": "TCP FIN Scan Detection",
+        "field": "",
+        "operator": "",
+        "value": "",
+        "action": "alert"
+    },
+    {
+        "name": "Large TCP Packet Detection",
+        "field": "",
+        "operator": "",
+        "value": "",
+        "action": "alert"
+    },
+    {
+        "name": "UDP Flood Detection",
+        "field": "Protocol",
+        "operator": "equals",
+        "value": "UDP",
+        "action": "Alert"
+    },
+    {
+        "name": "Large UDP Packet Detection",
+        "field": "",
+        "operator": "",
+        "value": "",
+        "action": "alert"
+    },
+    {
+        "name": "ICMP Flood Detection",
+        "field": "",
+        "operator": "",
+        "value": "",
+        "action": "alert"
+    },
+    {
+        "name": "Large ICMP Packet Detection",
+        "field": "",
+        "operator": "",
+        "value": "",
+        "action": "alert"
+    },
+    {
+        "name": "DNS Anomaly Detection",
+        "field": "src_ip",
+        "operator": "in_list",
+        "value": "123",
+        "action": "Alert"
+    },
+    {
+        "name": "DNS Flood Detection",
+        "field": "Port",
+        "operator": "equals",
+        "value": "53",
+        "action": "Alert"
+    },
+    {
+        "name": "ARP Spoofing Detection",
+        "field": "",
+        "operator": "",
+        "value": "",
+        "action": "alert"
+    },
+    {
+        "name": "IPv6 Hop Limit Alert",
+        "field": "",
+        "operator": "",
+        "value": "",
+        "action": "alert"
+    },
+    {
+        "name": "IPv6 Fragmentation Detection",
+        "field": "",
+        "operator": "",
+        "value": "",
+        "action": "alert"
+    },
+    {
+        "name": "SSH Port Scan Detection",
+        "field": "",
+        "operator": "",
+        "value": "",
+        "action": "alert"
+    },
+    {
+        "name": "Web Server Port Scan",
+        "field": "",
+        "operator": "",
+        "value": "",
+        "action": "log"
+    },
+    {
+        "name": "Database Port Scan Detection",
+        "field": "",
+        "operator": "",
+        "value": "",
+        "action": "alert"
+    },
+    {
+        "name": "External Network Access Detection",
+        "field": "",
+        "operator": "",
+        "value": "",
+        "action": "log"
+    },
+    {
+        "name": "Suspicious User Agent Detection",
+        "field": "",
+        "operator": "",
+        "value": "",
+        "action": "alert"
+    },
+    {
+        "name": "SQL Injection Attempt Detection",
+        "field": "",
+        "operator": "",
+        "value": "",
+        "action": "alert"
+    },
+    {
+        "name": "Cross-Site Scripting Detection",
+        "field": "",
+        "operator": "",
+        "value": "",
+        "action": "alert"
+    }
+]

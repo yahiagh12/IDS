@@ -1,0 +1,91 @@
+{
+  "thresholds": {
+    "SCAN_PORT_THRESHOLD": 15,
+    "SYN_FLOOD_THRESHOLD": 100,
+    "UDP_FLOOD_THRESHOLD": 200,
+    "ICMP_FLOOD_THRESHOLD": 150,
+    "ARP_FLOOD_THRESHOLD": 100,
+    "DNS_FLOOD_THRESHOLD": 200,
+    "TIME_WINDOW": 5
+  },
+  "profiles": {
+    "Low": {
+      "SCAN_PORT_THRESHOLD": 15,
+      "SYN_FLOOD_THRESHOLD": 100,
+      "UDP_FLOOD_THRESHOLD": 200,
+      "ICMP_FLOOD_THRESHOLD": 150,
+      "ARP_FLOOD_THRESHOLD": 100,
+      "DNS_FLOOD_THRESHOLD": 200,
+      "TIME_WINDOW": 5
+    },
+    "Medium": {
+      "SCAN_PORT_THRESHOLD": 10,
+      "SYN_FLOOD_THRESHOLD": 50,
+      "UDP_FLOOD_THRESHOLD": 80,
+      "ICMP_FLOOD_THRESHOLD": 60,
+      "ARP_FLOOD_THRESHOLD": 50,
+      "DNS_FLOOD_THRESHOLD": 80,
+      "TIME_WINDOW": 4
+    },
+    "High": {
+      "SCAN_PORT_THRESHOLD": 5,
+      "SYN_FLOOD_THRESHOLD": 20,
+      "UDP_FLOOD_THRESHOLD": 30,
+      "ICMP_FLOOD_THRESHOLD": 20,
+      "ARP_FLOOD_THRESHOLD": 20,
+      "DNS_FLOOD_THRESHOLD": 30,
+      "TIME_WINDOW": 3
+    },
+    "Critical": {
+      "SCAN_PORT_THRESHOLD": 3,
+      "SYN_FLOOD_THRESHOLD": 10,
+      "UDP_FLOOD_THRESHOLD": 15,
+      "ICMP_FLOOD_THRESHOLD": 10,
+      "ARP_FLOOD_THRESHOLD": 10,
+      "DNS_FLOOD_THRESHOLD": 15,
+      "TIME_WINDOW": 2
+    }
+  },
+  "whitelist": [],
+  "blacklist": [],
+  "notifications": {
+    "enable_popup": true,
+    "enable_sound": true,
+    "critical_attacks": [
+      "SYN Flood",
+      "UDP Flood",
+      "ICMP Flood",
+      "ARP Flood",
+      "ARP Spoofing",
+      "DNS Flood"
+    ]
+  },
+  "siem": {
+    "enable_json_logging": true,
+    "log_file": "alerts.jsonl"
+  },
+  "rbac": {
+    "enable_rbac": true
+  },
+  "syslog": {
+    "enable_syslog": false,
+    "syslog_host": "127.0.0.1",
+    "syslog_port": 514
+  },
+  "encryption": {
+    "enable_log_encryption": false
+  },
+  "current_profile": "Low",
+  "syn_flood": {
+    "window": 0.5,
+    "threshold": 10
+  },
+  "udp_flood": {
+    "window": 0.5,
+    "threshold": 10
+  },
+  "simple_rate": {
+    "window": 0.5,
+    "threshold": 10
+  }
+}

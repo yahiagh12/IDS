@@ -1,0 +1,241 @@
+# Architecture Avancée du Système IDS
+=======================================================
+
+## Vue d'ensemble
+Système de détection d'intrusion avec support IPv4/IPv6 complet,
+analyse avancée des comportements réseau, et interface graphique professionnelle.
+
+## Modules Principaux
+
+=========================================================
+
+📁 capture/
+🌍 Mission du dossier :
+Capturer les paquets réseau à partir d'interfaces système.
+
+• live_listener.py - Capture IPv4
+  - Utilise scapy, pyshark, socket pour capture
+  - Filtre les paquets IP
+  - Callback pour traitement en temps réel
+
+• live_listener_adv.py - Capture Avancée
+  - Support des backends multiples
+  - Capture IPv4/IPv6
+  - Analyse de protocoles (ARP, DNS, ICMP)
+
+• helpers.py - Utilitaires de capture
+  - Normalisation des paquets
+  - Extraction de métadonnées
+  - Utilitaires réseau
+
+=========================================================
+
+📁 preprocessing/
+⚙️ Mission du dossier :
+Normaliser et préparer les paquets pour la détection.
+
+• packet_parser.py
+  - Analyse complète des couches OSI
+  - Extraction des champs pertinents
+  - Normalisation des formats
+  - Gestion des malformations
+
+=========================================================
+
+📁 detection/
+🎯 Mission du dossier :
+Détecter les attaques et comportements suspects.
+
+• engine.py - Moteur de détection IPv4
+  - Orchestre les détecteurs
+  - Applique les règles personnalisées
+  - Génération des findings
+
+• arp_spoof_detector.py - Détection ARP Spoofing
+  - Suivi IP ↔ MAC mappings
+  - Détection d'incohérences
+
+• syn_flood_detector.py - Détection SYN Flood
+  - Comptage des paquets SYN
+  - Seuils temporels
+
+• udp_flood_detector.py - Détection UDP Flood
+  - Comptage des paquets UDP
+  - Détection des volumes anormaux
+
+• xmas_null_scan_detector.py - Détection Port Scans
+  - Détection XMAS (FIN+PSH+URG)
+  - Détection NULL scans (no flags)
+
+• simple_detector.py - Détecteur de Taux Générique
+  - Détection basée sur la fréquence
+  - Fallback pour protocoles non spécifiques
+
+• rule_engine.py - Moteur de Règles Personnalisées
+  - Évaluation des conditions
+  - Application des actions
+
+• detection_ipv6.py - Détection Avancée IPv6/IPv6
+  - Analyse comportementale
+  - Détection des attaques évoluées
+  - ARP Spoofing, SYN Scan/Flood
+  - XMAS Scan, NULL Scan
+  - UDP Flood, ICMP Flood
+  - Détections DNS, ARP
+  - Timeline et anomalies comportementales
+
+=========================================================
+
+📁 traffic_analyser.py
+📊 Mission du fichier :
+Analyser les patterns de trafic réseau.
+
+Contient :
+- Comptage des protocoles
+- Comptage des IPs source/destination
+- Analyse des requêtes DNS
+- Détection du tri-way handshake TCP
+- Usage des ports
+- Baseline du trafic
+
+=========================================================
+
+📁 utils/
+🔧 Mission du dossier :
+Support et utilitaires système.
+
+• config.py
+  - Gestion de la configuration
+  - Persistance des paramètres
+  - Thresholds
+
+• logger.py
+  - Logging système
+  - Journalisation des alertes
+
+• helpers.py
+  - Utilitaires généraux
+  - Formatage et conversion
+
+• normalization.py
+  - Normalisation des données
+  - Standardisation des formats
+
+=========================================================
+
+📁 gui/
+🌐 Mission du dossier :
+Interface graphique utilisateur.
+
+• capture_gui.py
+  Interface graphique unifiée (IPv4 & IPv6). Fournit:
+  - Capture de paquets en temps réel
+  - Affichage des détections (IPv4 & IPv6)
+  - Alertes de sécurité avancées
+  - Gestion des paramètres
+  - Règles personnalisées
+  - Statistiques et graphiques
+  - Analyse de baseline
+  - Analytics avancée
+
+• capture_gui_adv.py
+  Version avancée alternative avec features IPv6 étendues:
+  - Détection IPv6 avancée
+  - Traffic analysis approfondie
+  - Heatmaps temporelles
+  - User authentication (RBAC)
+  - Historique détaillé
+
+• rules_manager.py
+  Gestion des règles personnalisées:
+  - CRUD sur les règles
+  - Validation des règles
+  - Persistance (JSON)
+
+• ui_helpers.py
+  Utilitaires UI:
+  - Création de widgets
+  - Formatage des couleurs
+  - Gestion des erreurs
+
+=========================================================
+
+📁 config/
+📋 Mission du dossier :
+Fichiers de configuration système.
+
+• config.json
+  Paramètres de détection:
+  - Seuils par profil (Low, Medium, High, Critical)
+  - Configuration SIEM (JSON logging)
+  - Notifications (popup, son)
+  - Whitelist/Blacklist
+  - Autres paramètres
+
+• rules.json
+  Règles de détection personnalisées
+
+=========================================================
+
+📁 attacks/
+🎭 Mission du dossier :
+Scripts de test et simulation d'attaques.
+
+Scripts disponibles:
+• attack_arp_spoof.py - Simulation ARP Spoofing
+• attack_dns_anomaly.py - Anomalies DNS
+• attack_external_access.py - Accès externes
+• attack_large_packet.py - Paquets surdimensionnés
+• attack_null_scan.py - NULL scan
+• attack_port_scan.py - Port scanning
+• attack_syn_flood.py - SYN flooding
+• attack_udp_flood.py - UDP flooding
+• attack_xmas_scan.py - XMAS scanning
+
+=========================================================
+
+📁 scripts/
+🚀 Mission du dossier :
+Points d'entrée et runners.
+
+• runner_capture_adv.py
+  Lanceur pour capture_gui_adv avec IPv6
+
+Autres scripts divers:
+• traffic_analyser.py - Analyse indépendante du trafic
+• detection_ipv6.py - Détection IPv6 indépendante
+
+=========================================================
+
+## Architecture de Flux
+
+Capture → Preprocessing → Détection → Affichage GUI
+
+1. Capture: Live listener capture les paquets
+2. Preprocessing: Normalisation et extraction
+3. Détection:
+   - Engine IPv4 applique les détecteurs
+   - Rules engine vérifie les règles personnalisées
+   - IPv6 detector analyse les menaces avancées
+4. Affichage: GUI unifié montre tous les résultats
+
+=========================================================
+
+## Profils de Détection
+
+Low:     Sensibilité minimale (faux positifs bas)
+Medium:  Équilibre détection/faux positifs
+High:    Sensibilité élevée
+Critical: Maximum de sensibilité
+
+=========================================================
+
+## Configurations Disponibles
+
+SIEM: JSON logging pour intégration avec SIEM
+Notifications: Alertes popup et sonores
+RBAC: Contrôle d'accès basé rôles
+Syslog: Intégration syslog
+Logging: Cryptage des logs (optionnel)
+
+=========================================================
