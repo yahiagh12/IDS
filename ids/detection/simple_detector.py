@@ -21,7 +21,6 @@ class SimpleRateDetector:
     def analyze(self, packet: Dict[str, Any]) -> List[Dict[str, Any]]:
         findings = []
         try:
-            print(f"Debug: Packet analyzed in SimpleRateDetector: {packet}")
             src = packet.get('src_ip') or packet.get('src', 'Unknown Source')
             dst = packet.get('dst_ip') or packet.get('dst', 'Unknown Destination')
             proto = (packet.get('protocol') or 'Unknown Protocol').upper()

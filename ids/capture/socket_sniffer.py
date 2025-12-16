@@ -35,7 +35,6 @@ class SocketSniffer:
         while self._running:
             try:
                 raw_packet, _ = sock.recvfrom(65535)
-                print(f"Debug: Socket raw packet: {raw_packet}")
             except socket.timeout:
                 continue
             ip_header = raw_packet[14:34]
@@ -45,11 +44,23 @@ class SocketSniffer:
                 proto = iph[6]
                 src_ip = socket.inet_ntoa(iph[8])
                 dst_ip = socket.inet_ntoa(iph[9])
+                ip_header_len = (iph[0] & 0x0F) * 4
 
                 proto_name = {1: "ICMP", 6: "TCP", 17: "UDP"}.get(proto, "OTHER")
 
+                # Extract ports for TCP/UDP
+                src_port = None
+                dst_port = None
+                if proto in [6, 17]:  # TCP or UDP
+                    try:
+                        transport_header = raw_packet[14 + ip_header_len:14 + ip_header_len + 4]
+                        if len(transport_header) >= 4:
+                            src_port, dst_port = struct.unpack('!HH', transport_header[:4])
+                    except Exception:
+                        pass
+
                 from ids.capture.helpers import make_packet_dict
-                packet_dict = make_packet_dict(src_ip, dst_ip, proto_name, len(raw_packet), "RawSocketPacket", raw={'raw_len': len(raw_packet)})
+                packet_dict = make_packet_dict(src_ip, dst_ip, proto_name, len(raw_packet), "RawSocketPacket", src_port=src_port, dst_port=dst_port, raw={'raw_len': len(raw_packet)})
 
                 callback(packet_dict)
 

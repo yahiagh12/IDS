@@ -111,6 +111,8 @@ class DetectionEngine:
                         finding.setdefault('protocol', packet.get('protocol', 'unknown'))
                         finding.setdefault('src_ip', packet.get('src_ip', 'unknown'))
                         finding.setdefault('dst_ip', packet.get('dst_ip', 'unknown'))
+                        finding.setdefault('src_port', packet.get('src_port'))
+                        finding.setdefault('dst_port', packet.get('dst_port'))
                         finding.setdefault('count', 0)
                         finding.setdefault('message', 'No details available')
                     findings.extend(res)
@@ -149,6 +151,10 @@ class DetectionEngine:
                 match = str(value) in str(pkt_value)
             elif operator == "cidr":
                 match = is_ip_in_cidr(str(pkt_value), str(value))
+            elif operator == "in_list":
+                # Split the value string by comma to get list of allowed values
+                allowed_values = [v.strip() for v in str(value).split(',')]
+                match = str(pkt_value) in allowed_values
             else:
                 logger.debug("Unknown operator '%s'. Rule does not match.", operator)
                 return False

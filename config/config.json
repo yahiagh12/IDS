@@ -64,21 +64,8 @@
     "enable_json_logging": true,
     "log_file": "alerts.jsonl"
   },
-  "geolocation": {
-    "enable_geolocation": true,
-    "api_timeout": 2
-  },
-  "heatmap": {
-    "enable_heatmap": true
-  },
   "rbac": {
     "enable_rbac": true
-  },
-  "webhook": {
-    "enable_webhook": false,
-    "webhook_url": "",
-    "api_port": 5000,
-    "enable_rest_api": false
   },
   "syslog": {
     "enable_syslog": false,
@@ -88,5 +75,17 @@
   "encryption": {
     "enable_log_encryption": false
   },
-  "current_profile": "Low"
+  "current_profile": "Low",
+  "syn_flood": {
+    "window": 0.5,
+    "threshold": 10
+  },
+  "udp_flood": {
+    "window": 0.5,
+    "threshold": 10
+  },
+  "simple_rate": {
+    "window": 0.5,
+    "threshold": 10
+  }
 }

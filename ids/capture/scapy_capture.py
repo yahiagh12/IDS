@@ -8,7 +8,11 @@ from ids.capture.helpers import make_packet_dict
 class ScapyCapture:
     def __init__(self, interface: Optional[str] = None, bpf_filter: str = "ip or arp"):
         self.interface = interface
-        self.bpf_filter = bpf_filter
+        # Handle loopback interface - use None filter to capture all
+        if interface and interface.lower() in ['lo', 'lo0', 'localhost']:
+            self.bpf_filter = None
+        else:
+            self.bpf_filter = bpf_filter if bpf_filter else None
         self._sniffer: Optional[AsyncSniffer] = None
         self._running = False
 
@@ -42,16 +46,41 @@ class ScapyCapture:
         if not pkt.haslayer(IP):
             return None
 
+        ip_layer = pkt[IP]
         proto = "OTHER"
-        if pkt.haslayer(TCP):
+        src_port = None
+        dst_port = None
+        
+        # Check by IP protocol number (more reliable on loopback)
+        proto_num = ip_layer.proto
+        if proto_num == 6:
             proto = "TCP"
-        elif pkt.haslayer(UDP):
+            if pkt.haslayer(TCP):
+                tcp_layer = pkt[TCP]
+                src_port = tcp_layer.sport
+                dst_port = tcp_layer.dport
+        elif proto_num == 17:
             proto = "UDP"
-        elif pkt.haslayer(ICMP):
+            if pkt.haslayer(UDP):
+                udp_layer = pkt[UDP]
+                src_port = udp_layer.sport
+                dst_port = udp_layer.dport
+        elif proto_num == 1:
             proto = "ICMP"
-
-        # Debug: Scapy raw packet
-        print(f"Debug: Scapy raw packet: {pkt.summary()} | Raw: {pkt}")
+        else:
+            # Fallback to layer checking
+            if pkt.haslayer(TCP):
+                proto = "TCP"
+                tcp_layer = pkt[TCP]
+                src_port = tcp_layer.sport
+                dst_port = tcp_layer.dport
+            elif pkt.haslayer(UDP):
+                proto = "UDP"
+                udp_layer = pkt[UDP]
+                src_port = udp_layer.sport
+                dst_port = udp_layer.dport
+            elif pkt.haslayer(ICMP):
+                proto = "ICMP"
 
         return make_packet_dict(
             src=pkt[IP].src,
@@ -59,8 +88,11 @@ class ScapyCapture:
             proto=proto,
             length=len(pkt),
             summary=pkt.summary(),
+            src_port=src_port,
+            dst_port=dst_port,
             raw={
                 "scapy": True,
+                "proto_num": proto_num,
             },
         )
 
