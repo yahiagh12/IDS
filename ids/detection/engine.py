@@ -33,7 +33,6 @@ def get_rules_file():
     # Default to current directory
     return "rules.json"
 
-RULES_FILE = get_rules_file()
 
 
 def load_rules():

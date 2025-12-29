@@ -414,6 +414,10 @@ class UnifiedCaptureGUI:
         """Build the settings tab with professional layout matching other tabs."""
         from ids.utils import config as cfg
         
+        # Clear existing widgets from settings tab
+        for widget in self.settings_tab.winfo_children():
+            widget.destroy()
+        
         # Professional header frame
         header_frame = tk.Frame(self.settings_tab, bg="#34495e", height=80)
         header_frame.pack(fill=tk.X, padx=0, pady=0)
@@ -1229,7 +1233,8 @@ Action:                   {group_data.get('action', 'ALERT').upper() if group_da
                     'message': message,
                 }
 
-            apply_row_color(self.detections_tree, item_id, row_color)
+            if item_id:
+                apply_row_color(self.detections_tree, item_id, row_color)
             
             # Update detection count and statistics
             detection_count = len(self.detection_groups)

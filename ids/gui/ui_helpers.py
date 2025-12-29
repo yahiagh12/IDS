@@ -52,6 +52,8 @@ def get_finding_color(action):
 
 def apply_row_color(tree, item_id, color):
     """Apply color to a tree item."""
+    if not item_id:
+        return
     if color and not tree.tag_has(color):
         tree.tag_configure(color, background=color)
     if color:
